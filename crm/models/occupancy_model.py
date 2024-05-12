@@ -4,7 +4,8 @@ import numpy as np
 from tqdm import tqdm
 from joblib import Parallel, delayed
 
-from .levy_processes import ApproxProcess, StripMethod
+from ..crm_approx import ApproxProcess
+from ..strip_method import StripMethod
 
 
 class OccupancyModel:
