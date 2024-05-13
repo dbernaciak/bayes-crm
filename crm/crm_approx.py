@@ -1,15 +1,19 @@
-from typing import Callable, Tuple
+"""Approximation of a Levy process with a piecewise constant intensity."""
+from collections.abc import Callable
+from typing import Optional
+
 import numpy as np
-from crm.utils.numerics import logspace, logn
 from scipy.integrate import quad
+
+from crm.utils.numerics import logn, logspace
 
 
 def envelope(
     x: float,
     p_x: Callable,
     edges: np.ndarray,
-    g_x: Callable = None,
-    kappa: float = None,
+    g_x: Callable = None,  # noqa: RUF013
+    kappa: Optional[float] = None,  # noqa: UP007
     thr=0.8,
 ):
     """Multipart enveloping Levy intensity.
@@ -25,7 +29,9 @@ def envelope(
     Returns:
         float: The result of the multipart enveloping Levy intensity.
     """
-    assert 0 < x <= 1
+    if not 0 < x <= 1:
+        raise ValueError("x must be between 0 and 1")  # noqa: TRY003
+
     idx = int(len(edges) * thr)
     cutoff = edges[idx]
     if x in edges:
@@ -52,11 +58,11 @@ class ApproxProcess:
         self,
         p_x: Callable,
         n_grids: int = 1001,
-        g_x: Callable = None,
-        kappa: float = None,
+        g_x: Callable = None,  # noqa: RUF013
+        kappa: Optional[float] = None,  # noqa: UP007
         edges: np.ndarray = None,
         thr: float = 0.8,
-        bounds: Tuple[float, float] = (1e-10, 1),
+        bounds: tuple[float, float] = (1e-10, 1),
     ):
         self.p_x = p_x
         self.n_grids = n_grids
@@ -143,7 +149,7 @@ class ApproxProcess:
             if self._check_tail(x):
                 return
 
-        raise ValueError("Could not extrapolate the tails")
+        raise ValueError("Could not extrapolate the tails")  # noqa: TRY003
 
     def _get_csum(self):
         if self.edges is None:

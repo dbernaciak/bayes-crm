@@ -1,8 +1,9 @@
 """Occupancy model."""
-from typing import Tuple, Callable
+from collections.abc import Callable
+
 import numpy as np
-from tqdm import tqdm
 from joblib import Parallel, delayed
+from tqdm import tqdm
 
 from ..crm_approx import ApproxProcess
 from ..strip_method import StripMethod
@@ -54,18 +55,16 @@ class OccupancyModel:
                     ** self.num_occasions
                 )
                 + (
-                    (
                         1
                         - self.theta_mesh.reshape(
                             *self.theta_mesh.shape,
                             1,
                         )
-                    )
                 )
             ).prod(axis=2)
         )
 
-    def posterior(self, observations: np.ndarray) -> Tuple[np.ndarray, Callable]:
+    def posterior(self, observations: np.ndarray) -> tuple[np.ndarray, Callable]:
         """Posterior calculator.
 
         Args:
@@ -128,19 +127,17 @@ def predictive(
     n_sites: int,
     n_samplings: int,
     n_extra_samplings: int,
-    thr: float = 0.5,
-) -> np.ndarray:
+) -> tuple[np.ndarray, np.ndarray]:
     """Predictive distribution.
 
     Args:
-        occupancy_model (class:`OccupancyModel`): Occupany model.
+        occupancy_model (class:`OccupancyModel`): Occupancy model.
         theta (class:`np.ndarray`): Marginal theta posterior
         q (class:`np.ndarray`): Conditional q posterior
         n_draws (int): Number of draws
         n_sites (int): Number of sites
         n_samplings (int): Number of samplings
         n_extra_samplings (int): Number of extra samplings
-        thr (float): Threshold
 
     Returns:
         class:`Tuple[np.ndarray, np.ndarray]`:
@@ -148,11 +145,12 @@ def predictive(
 
     y_obs = []
     counter = 0
-    for i, (theta_i, q_i) in tqdm(enumerate(zip(theta, q))):
-        Z = np.random.binomial(n=1, p=theta_i, size=n_sites)
-        Y = np.random.binomial(n=1, p=Z * np.ones((n_samplings, n_sites)) * q_i)
-        if np.any(Y):
-            theta_posterior, q_cond_posterior = occupancy_model.posterior(Y)
+    y = np.zeros((n_samplings, n_sites))
+    for _, (theta_i, q_i) in tqdm(enumerate(zip(theta, q, strict=False))):
+        z = np.random.binomial(n=1, p=theta_i, size=n_sites)
+        y = np.random.binomial(n=1, p=z * np.ones((n_samplings, n_sites)) * q_i)
+        if np.any(y):
+            theta_posterior, q_cond_posterior = occupancy_model.posterior(y)
             theta_sm = StripMethod.from_grid(
                 theta_posterior, occupancy_model.theta_grid
             )
@@ -171,11 +169,11 @@ def predictive(
                 y_obs[-1][j] = y_gen.sum(axis=0)
             counter += 1
 
-    theta_posterior, q_cond_posterior = occupancy_model.posterior(np.zeros(Y.shape))
+    theta_posterior, q_cond_posterior = occupancy_model.posterior(np.zeros(y.shape))
     theta_sm = ApproxProcess.from_grid(theta_posterior, occupancy_model.theta_grid)
     n_unobs = 50
 
-    def gen_unobs(theta_sm, q_cond_posterior, n_unobs, n_sites, n_extra_samplings):
+    def gen_unobs(theta_sm, q_cond_posterior, n_unobs, n_sites, n_extra_samplings) -> np.ndarray:
         y_unobs = np.empty((n_unobs, n_sites))
         unobserved_theta = theta_sm.generate(size=n_unobs)
         for i, u_theta in enumerate(unobserved_theta):

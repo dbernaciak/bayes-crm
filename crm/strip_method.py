@@ -1,5 +1,6 @@
 """Strip method for sampling of random variables."""
-from typing import Callable, Tuple
+from collections.abc import Callable
+
 import numpy as np
 from scipy.integrate import quad
 from scipy.interpolate import RegularGridInterpolator
@@ -13,10 +14,10 @@ class StripMethod:
 
     def __init__(
         self,
-        p_x: Callable = None,
+        p_x: Callable = None,  # noqa: RUF013
         edges: np.ndarray = None,
         pdf: np.ndarray = None,
-        bounds: Tuple[float, float] = (0.0, 1.0),
+        bounds: tuple[float, float] = (0.0, 1.0),
     ):
         self.p_x = p_x
         self.edges = edges
@@ -41,7 +42,7 @@ class StripMethod:
                     method="linear",
                 )
         elif pdf is None and p_x is None:
-            raise AssertionError("p_x and pdf cannot be None at the same time")
+            raise AssertionError("p_x and pdf cannot be None at the same time")  # noqa: TRY003
 
         d_x = self.edges[1:] - self.edges[:-1]
         self.mins = np.amin(np.asarray([self.pdf[1:], self.pdf[:-1]]), axis=0)
@@ -50,7 +51,7 @@ class StripMethod:
 
     @classmethod
     def from_grid(
-        cls, pdf: np.ndarray, grid: np.ndarray, bounds: Tuple[float, float] = (0, 1)
+        cls, pdf: np.ndarray, grid: np.ndarray, bounds: tuple[float, float] = (0, 1)
     ):
         """Constructor from grid and corresponding intensity.
 
@@ -69,7 +70,7 @@ class StripMethod:
     def _strip(
         number_draws_in_bin,
         edges,
-        rng: np.random.Generator = np.random.default_rng(seed=0),
+        rng: np.random.Generator = np.random.default_rng(seed=0),  # noqa: B008
     ) -> np.ndarray:
         """Strip method helper.
 
@@ -90,7 +91,7 @@ class StripMethod:
         return out
 
     def generate(
-        self, size: int, rng: np.random.Generator = np.random.default_rng(seed=0)
+        self, size: int, rng: np.random.Generator = np.random.default_rng(seed=0)  # noqa: B008
     ) -> np.ndarray:
         """Draw random variable using the strip method.
 
@@ -106,24 +107,24 @@ class StripMethod:
         number_draws_in_bin = rng.multinomial(size, self.probs / self.probs.sum())
         out = self._strip(number_draws_in_bin[: self.n_grids - 1], self.edges, rng)
         # top
-        mx_top = max(number_draws_in_bin[self.n_grids - 1 :])
+        mx_top = max(number_draws_in_bin[self.n_grids - 1:])
         if mx_top > 1:
             const = 5
             out_top = self._strip(
-                number_draws_in_bin[self.n_grids - 1 :] * const, self.edges, rng
+                number_draws_in_bin[self.n_grids - 1:] * const, self.edges, rng
             )
             idx = np.repeat(
                 np.arange(0, self.n_grids - 1),
-                number_draws_in_bin[self.n_grids - 1 :] * const,
+                number_draws_in_bin[self.n_grids - 1:] * const,
             )
             unifs = rng.uniform(
-                0, 1, size=(number_draws_in_bin[self.n_grids - 1 :]).sum() * const
+                0, 1, size=(number_draws_in_bin[self.n_grids - 1:]).sum() * const
             )
             mask_top = self.mins[idx] + (
                 self.maxs[idx] - self.mins[idx]
             ) * unifs <= self.p_x(out_top)
             out_top = out_top[mask_top]
-            out_top = rng.choice(out_top, number_draws_in_bin[self.n_grids - 1 :].sum())
+            out_top = rng.choice(out_top, number_draws_in_bin[self.n_grids - 1:].sum())
             out = np.hstack((out, out_top))
 
         return out
