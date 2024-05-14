@@ -89,13 +89,13 @@ class ApproxProcess:
         else:
             self._extrapolate_tails()
 
-    def _check_tail(self, x, delta=0.1):
+    def _check_tail(self, x):
         gap_x = self.p_x(x)
-        c = (x + delta) / x
+        delta = x * (self.step - 1)
         pdf_exp = 0.5 * (self.p_x(x + delta) + gap_x) * delta
         ratio_exp = pdf_exp / (0.5 * (self.p_x(x) + self.p_x(x - delta)) * delta)
-        ratio_poly = pdf_exp / (0.5 * (gap_x + self.p_x(x / c)) * x * (c - 1))
-        p = -logn(c, ratio_poly) - 1
+        ratio_poly = pdf_exp / (0.5 * (gap_x + self.p_x(x / self.step)) * x * (self.step - 1))
+        p = -logn(self.step, ratio_poly) - 1
         const = gap_x / x ** (-p)
         integ = quad(self.p_x, x, self.bounds[1])[0]
         approx_integ_exp = pdf_exp / (1 - ratio_exp) - pdf_exp
@@ -103,13 +103,12 @@ class ApproxProcess:
         if abs(approx_integ_poly - integ) < ApproxProcess.EPSILON and abs(
             approx_integ_poly - integ
         ) < abs(approx_integ_exp - integ):
-            extra_steps = int(logn(self.step, 1e6 / self.bounds[0]) - self.n_grids + 1)
+            extra_steps = int(logn(self.step, 1e6 / self.bounds[0]) - self.n_grids + 1)  # needs optimization
             x = self.bounds[0] * self.step ** (self.n_grids + extra_steps - 1)
             self.edges = logspace(
                 np.log10(self.bounds[0]),
                 np.log10(x),
                 num=self.n_grids + extra_steps,
-                # endpoint=True,
                 base=10.0,
             )
             return True
