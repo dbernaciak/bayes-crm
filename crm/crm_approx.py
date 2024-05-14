@@ -1,6 +1,7 @@
 from typing import Callable, Tuple
 import numpy as np
 from crm.utils.numerics import logspace, logn
+from math import log, log10
 from scipy.integrate import quad
 
 
@@ -68,14 +69,15 @@ class ApproxProcess:
         if bounds[0] == 0:
             bounds = (1e-10, bounds[1])
         self.bounds = bounds
+        self.logbounds = np.log10(np.array(bounds))
         self.step = 10 ** (10 / (n_grids - 1))
 
     def _get_edges(self):
         if self.bounds[1] < np.inf:
             if self.bounds[1] != np.inf:
                 self.edges = logspace(
-                    np.log10(self.bounds[0]),
-                    np.log10(self.bounds[1]),
+                    self.logbounds[0],
+                    self.logbounds[1],
                     num=self.n_grids,
                     # endpoint=True,
                     base=10.0,
@@ -100,8 +102,8 @@ class ApproxProcess:
             extra_steps = int(logn(self.step, 1e6 / self.bounds[0]) - self.n_grids + 1)
             x = self.bounds[0] * self.step ** (self.n_grids + extra_steps - 1)
             self.edges = logspace(
-                np.log10(self.bounds[0]),
-                np.log10(x),
+                self.logbounds[0],
+                log10(x),
                 num=self.n_grids + extra_steps,
                 # endpoint=True,
                 base=10.0,
@@ -123,8 +125,8 @@ class ApproxProcess:
             self.edges = np.concatenate(
                 (
                     logspace(
-                        np.log10(self.bounds[0]),
-                        np.log10(x),
+                        self.logbounds[0],
+                        log10(x),
                         num=self.n_grids + extra_steps,
                         # endpoint=True,
                         base=10.0,
@@ -165,7 +167,7 @@ class ApproxProcess:
             )
 
             if self.kappa == -1:
-                p_1 = fun_eval_1[:-1] * (np.log(self.edges[1] / self.edges[0]))
+                p_1 = fun_eval_1[:-1] * (log(self.edges[1] / self.edges[0]))
             else:
                 p_1 = (
                     fun_eval_1[:-1]
@@ -211,7 +213,7 @@ class ApproxProcess:
                 )
                 fun_eval_1 = self.g_x(extrapolated_grid)
                 if self.kappa == -1:
-                    p_1 = fun_eval_1[:-1] * (np.log(self.edges[1] / self.edges[0]))
+                    p_1 = fun_eval_1[:-1] * (log(self.edges[1] / self.edges[0]))
                 else:
                     p_1 = (
                         fun_eval_1[:-1]
@@ -228,7 +230,7 @@ class ApproxProcess:
                 k = (self.c_sum[-1] - self.c_sum[-2]) / (
                     self.c_sum[-2] - self.c_sum[-3]
                 )
-                self.kappa = np.log10(k) / np.log10(self.edges[0] / self.edges[1]) - 1
+                self.kappa = log10(k) / log10(self.edges[0] / self.edges[1]) - 1
                 extrapolated_grid = self._get_grid_extrapolated_left(
                     bin_pdf, self.kappa, max_arrival_time
                 )
@@ -253,6 +255,7 @@ class ApproxProcess:
             self.edges = np.concatenate((extrapolated_grid[:-1], self.edges))
             self.c_sum = np.concatenate((self.c_sum, new_csum))
             self.bounds = (self.edges[0], self.edges[-1])
+            self.logbounds = np.log(np.array(self.bounds))
 
     @classmethod
     def from_grid(cls, intensity: np.ndarray, grid: np.ndarray):

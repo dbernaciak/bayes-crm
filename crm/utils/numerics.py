@@ -4,11 +4,11 @@ import numpy.core.numeric as nx
 import numba as nb
 
 
-@nb.njit("f8[:](f8, f8, i8, f8)")
+@nb.njit("f8[:](f8, f8, f8, f8)")
 def logspace(start, stop, num, base=10):
     delta = stop - start
     step = delta / (num - 1)
-    y = np.arange(0, num)
+    y = np.arange(0.0, num, dtype=np.float64)
     y = y * step
     y = y + start
     return np.power(base, y)
