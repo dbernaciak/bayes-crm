@@ -25,3 +25,8 @@ def arrival_times(size):
     for i in range(size):
         ret[i] = np.random.exponential()
     return np.cumsum(ret)
+
+@nb.njit("f8[:](f8[:])")
+def reverse_cumsum(x):
+    return np.cumsum(x[::-1])
+

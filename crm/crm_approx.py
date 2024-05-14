@@ -1,6 +1,6 @@
 from typing import Callable, Tuple
 import numpy as np
-from crm.utils.numerics import logspace, logn
+from crm.utils.numerics import logspace, logn, reverse_cumsum
 from math import log, log10
 from scipy.integrate import quad
 
@@ -116,7 +116,7 @@ class ApproxProcess:
             exp_bins = pdf_exp * ratio_exp ** np.arange(1, 1001)
             end_point = (
                 np.argwhere(
-                    exp_bins[::-1].cumsum()[::-1]
+                    reverse_cumsum(exp_bins)[::-1]
                     < ApproxProcess.CDF_EPSILON / ratio_exp
                 ).ravel()[0]
                 * delta
@@ -153,9 +153,9 @@ class ApproxProcess:
 
         if self.kappa is None or self.g_x is None:
             fun_eval = self.p_x(self.edges)
-            self.c_sum = (
+            self.c_sum = reverse_cumsum(
                 (self.edges[1:] - self.edges[:-1]) * (fun_eval[1:] + fun_eval[:-1]) / 2
-            )[::-1].cumsum()
+            )
         else:
             idx = int(self.n_grids * self.thr)
             fun_eval_1 = self.g_x(self.edges[: idx + 1])
@@ -179,7 +179,7 @@ class ApproxProcess:
                     )
                 )
 
-            self.c_sum = np.concatenate((p_1, p_2))[::-1].cumsum()
+            self.c_sum = reverse_cumsum(np.concatenate((p_1, p_2)))
 
     def _get_grid_extrapolated_left(self, bin_pdf, kappa, max_arrival_time):
         if round(kappa, 5) == -1:
@@ -224,7 +224,7 @@ class ApproxProcess:
                             - extrapolated_grid[:-1] ** (self.kappa + 1)
                         )
                     )
-                new_csum = p_1[::-1].cumsum() + self.c_sum[-1]
+                new_csum = reverse_cumsum(p_1) + self.c_sum[-1]
             else:
                 # back-out the exponential term
                 k = (self.c_sum[-1] - self.c_sum[-2]) / (
@@ -247,7 +247,7 @@ class ApproxProcess:
                             - extrapolated_grid[:-1] ** (self.kappa + 1)
                         )
                     )
-                    new_csum = p_1[::-1].cumsum() + self.c_sum[-1]
+                    new_csum = reverse_cumsum(p_1) + self.c_sum[-1]
                 else:
                     n = len(extrapolated_grid[:-1])
                     new_csum = (np.ones(n) * bin_pdf).cumsum() + self.c_sum[-1]
