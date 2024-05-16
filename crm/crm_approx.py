@@ -1,16 +1,19 @@
-from typing import Callable, Tuple
+"""Approximation of a Levy process with a piecewise constant intensity."""
+from collections.abc import Callable
+from typing import Optional
+
 import numpy as np
-from crm.utils.numerics import logspace, logn, reverse_cumsum
 from math import log, log10
 from scipy.integrate import quad
+from crm.utils.numerics import logspace, logn, reverse_cumsum
 
 
 def envelope(
     x: float,
     p_x: Callable,
     edges: np.ndarray,
-    g_x: Callable = None,
-    kappa: float = None,
+    g_x: Callable = None,  # noqa: RUF013
+    kappa: Optional[float] = None,  # noqa: UP007
     thr=0.8,
 ):
     """Multipart enveloping Levy intensity.
@@ -26,7 +29,9 @@ def envelope(
     Returns:
         float: The result of the multipart enveloping Levy intensity.
     """
-    assert 0 < x <= 1
+    if not 0 < x <= 1:
+        raise ValueError("x must be between 0 and 1")  # noqa: TRY003
+
     idx = int(len(edges) * thr)
     cutoff = edges[idx]
     if x in edges:
@@ -53,11 +58,11 @@ class ApproxProcess:
         self,
         p_x: Callable,
         n_grids: int = 1001,
-        g_x: Callable = None,
-        kappa: float = None,
+        g_x: Callable = None,  # noqa: RUF013
+        kappa: Optional[float] = None,  # noqa: UP007
         edges: np.ndarray = None,
         thr: float = 0.8,
-        bounds: Tuple[float, float] = (1e-10, 1),
+        bounds: tuple[float, float] = (1e-10, 1),
     ):
         self.p_x = p_x
         self.n_grids = n_grids
@@ -85,13 +90,13 @@ class ApproxProcess:
         else:
             self._extrapolate_tails()
 
-    def _check_tail(self, x, delta=0.1):
+    def _check_tail(self, x):
         gap_x = self.p_x(x)
-        c = (x + delta) / x
+        delta = x * (self.step - 1)
         pdf_exp = 0.5 * (self.p_x(x + delta) + gap_x) * delta
         ratio_exp = pdf_exp / (0.5 * (self.p_x(x) + self.p_x(x - delta)) * delta)
-        ratio_poly = pdf_exp / (0.5 * (gap_x + self.p_x(x / c)) * x * (c - 1))
-        p = -logn(c, ratio_poly) - 1
+        ratio_poly = pdf_exp / (0.5 * (gap_x + self.p_x(x / self.step)) * x * (self.step - 1))
+        p = -logn(self.step, ratio_poly) - 1
         const = gap_x / x ** (-p)
         integ = quad(self.p_x, x, self.bounds[1])[0]
         approx_integ_exp = pdf_exp / (1 - ratio_exp) - pdf_exp
@@ -99,13 +104,12 @@ class ApproxProcess:
         if abs(approx_integ_poly - integ) < ApproxProcess.EPSILON and abs(
             approx_integ_poly - integ
         ) < abs(approx_integ_exp - integ):
-            extra_steps = int(logn(self.step, 1e6 / self.bounds[0]) - self.n_grids + 1)
+            extra_steps = int(logn(self.step, 1e6 / self.bounds[0]) - self.n_grids + 1)  # needs optimization
             x = self.bounds[0] * self.step ** (self.n_grids + extra_steps - 1)
             self.edges = logspace(
                 self.logbounds[0],
                 log10(x),
                 num=self.n_grids + extra_steps,
-                # endpoint=True,
                 base=10.0,
             )
             return True
@@ -145,7 +149,7 @@ class ApproxProcess:
             if self._check_tail(x):
                 return
 
-        raise ValueError("Could not extrapolate the tails")
+        raise ValueError("Could not extrapolate the tails")  # noqa: TRY003
 
     def _get_csum(self):
         if self.edges is None:

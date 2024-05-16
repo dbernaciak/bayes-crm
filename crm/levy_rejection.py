@@ -1,7 +1,8 @@
 """This module contains the rejection method for the Levy processes."""
-import numpy as np
-import numba as nb
 from math import gamma
+
+import numba as nb
+import numpy as np
 
 
 @nb.njit("float64[:](int64, float64, float64)", fastmath=True)
@@ -28,14 +29,14 @@ def rejection_beta_brod(n, M, c):
     reject = 0
     while count < n:
         u = u - np.log(np.random.rand()) / M
-        ystar = np.exp(-1 / c * u)
-        accept = (1 - ystar) ** (c - 1)
+        y_star = np.exp(-1 / c * u)
+        accept = (1 - y_star) ** (c - 1)
 
         if accept > 1:
-            raise Exception("Acceptance probability is greater than 1")
+            raise ValueError("Acceptance probability is greater than 1")  # noqa: TRY003
 
         if np.random.rand() < accept:
-            y[count] = ystar
+            y[count] = y_star
             count = count + 1
         else:
             reject = reject + 1
@@ -63,13 +64,13 @@ def rejection_gamma_ros(n, M):
     reject = 0
     while count < n:
         u = u - np.log(np.random.rand()) / M
-        ystar = 1 / (np.exp(u) - 1)
-        true = np.exp(-ystar)
-        env = 1 / (1 + ystar)
+        y_star = 1 / (np.exp(u) - 1)
+        true = np.exp(-y_star)
+        env = 1 / (1 + y_star)
         accept = true / env
 
         if np.random.rand() < accept:
-            y[count] = ystar
+            y[count] = y_star
             count = count + 1
         else:
             reject = reject + 1
@@ -103,11 +104,11 @@ def rejection_gen_gamma_brod(n, M, sigma):
     reject = 0
     while count < n:
         u = u - np.log(np.random.rand()) / M
-        ystar = (sigma * const1 * u) ** (-1 / sigma)
-        accept = np.exp(-ystar)
+        y_star = (sigma * const1 * u) ** (-1 / sigma)
+        accept = np.exp(-y_star)
 
         if np.random.rand() < accept:
-            y[count] = ystar
+            y[count] = y_star
             count = count + 1
         else:
             reject = reject + 1
@@ -142,14 +143,14 @@ def rejection_stable_beta_brod(n, M, c, sigma):
     reject = 0
     while count < n:
         u = u - np.log(np.random.rand()) / M
-        ystar = (1 + u / const1 * sigma) ** (-1 / sigma)
-        accept = (1 - ystar) ** (c + sigma - 1)
+        y_star = (1 + u / const1 * sigma) ** (-1 / sigma)
+        accept = (1 - y_star) ** (c + sigma - 1)
 
         if accept > 1:
-            raise Exception("Acceptance probability is greater than 1")
+            raise ValueError("Acceptance probability is greater than 1")  # noqa: TRY003
 
         if np.random.rand() < accept:
-            y[count] = ystar
+            y[count] = y_star
             count = count + 1
         else:
             reject = reject + 1

@@ -1,6 +1,8 @@
-import numpy as np
-import numba as nb
+""" This module contains the implementation of the two-envelope acceptance-rejection method. """
 from math import gamma
+
+import numba as nb
+import numpy as np
 
 
 @nb.njit("float64[:](int64, float64, float64)", fastmath=True)
@@ -31,17 +33,17 @@ def two_envelope_beta(n, M, c):
     while count < n:
         u = u - np.log(np.random.rand()) / M
         if u > const1:
-            ystar = b * np.exp(-1 / c * (u - const1))
-            accept = (1 - ystar) ** (c - 1)
+            y_star = b * np.exp(-1 / c * (u - const1))
+            accept = (1 - y_star) ** (c - 1)
         else:
-            ystar = 1 - (u * b) ** (1 / c)
-            accept = b * ystar ** (-1)
+            y_star = 1 - (u * b) ** (1 / c)
+            accept = b * y_star ** (-1)
 
         if accept > 1:
-            raise Exception("Acceptance probability is greater than 1")
+            raise ValueError("Acceptance probability is greater than 1")  # noqa: TRY003
 
         if np.random.rand() < accept:
-            y[count] = ystar
+            y[count] = y_star
             count += 1
         else:
             reject += 1
@@ -76,15 +78,15 @@ def two_envelope_gamma(n, M):
     while count < n:
         u = u - np.log(np.random.rand()) / M
         if u > const1:
-            ystar = b * np.exp(const1 - u)
-            accept = np.exp(-ystar)
+            y_star = b * np.exp(const1 - u)
+            accept = np.exp(-y_star)
         else:
-            ystar = -logb - np.log(u)
-            accept = b * ystar ** (-1)
+            y_star = -logb - np.log(u)
+            accept = b * y_star ** (-1)
 
         if np.random.rand() < accept:
             count = count + 1
-            y[count - 1] = ystar
+            y[count - 1] = y_star
         else:
             reject = reject + 1
 
@@ -125,18 +127,18 @@ def two_envelope_stable_beta(n, M, c, sigma):
     while count < n:
         u = u - np.log(np.random.rand()) / M
         if u > const4:
-            ystar = (u / const1 * sigma + const3) ** (-1 / sigma)
-            accept = (1 - ystar) ** (c + sigma - 1)
+            y_star = (u / const1 * sigma + const3) ** (-1 / sigma)
+            accept = (1 - y_star) ** (c + sigma - 1)
         else:
-            ystar = 1 - (u / const2 * b ** (1 + sigma)) ** (1 / (c + sigma))
-            accept = (ystar / b) ** (-1 - sigma)
+            y_star = 1 - (u / const2 * b ** (1 + sigma)) ** (1 / (c + sigma))
+            accept = (y_star / b) ** (-1 - sigma)
 
         if accept > 1:
-            raise Exception("Acceptance probability is greater than 1")
+            raise ValueError("Acceptance probability is greater than 1")  # noqa: TRY003
 
         if np.random.rand() < accept:
             count = count + 1
-            y[count - 1] = ystar
+            y[count - 1] = y_star
         else:
             reject = reject + 1
 
@@ -175,14 +177,14 @@ def two_envelope_gen_gamma(n, M, sigma):
     while count < n:
         u = u - np.log(np.random.rand()) / M
         if u > const2:
-            ystar = (sigma * const1 * u + const3) ** (-1 / sigma)
-            accept = np.exp(-ystar)
+            y_star = (sigma * const1 * u + const3) ** (-1 / sigma)
+            accept = np.exp(-y_star)
         else:
-            ystar = const4 - np.log(u)
-            accept = (ystar / b) ** (-1 - sigma)
+            y_star = const4 - np.log(u)
+            accept = (y_star / b) ** (-1 - sigma)
 
         if np.random.rand() < accept:
-            y[count] = ystar
+            y[count] = y_star
             count = count + 1
         else:
             reject = reject + 1

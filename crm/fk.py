@@ -1,18 +1,21 @@
 """Ferguson-Klass sampling algorithm for various processes."""
-from typing import Callable
+from collections.abc import Callable
+
 import numpy as np
-from scipy.special import gamma, exp1
 from scipy.integrate import quad
 from scipy.optimize import root_scalar
+from scipy.special import exp1, gamma
 
 
-def ferguson_klass(arrival_times: np.ndarray, p_x: Callable, upper_lim=1) -> np.ndarray:
+# noinspection PyUnresolvedReferences
+def ferguson_klass(arrival_times: np.ndarray, p_x: Callable, upper_lim: float = 1) -> np.ndarray:
     """
     Ferguson-Klass algorithm
 
     Args:
         arrival_times (np.ndarray): The arrival times of the unit Poisson process.
         p_x (Callable): A function representing the process.
+        upper_lim (float): The upper limit of the process.
 
     Returns:
         np.ndarray: The result of the Ferguson-Klass algorithm.
@@ -30,10 +33,11 @@ def ferguson_klass(arrival_times: np.ndarray, p_x: Callable, upper_lim=1) -> np.
         return ferguson_klass_beta(arrival_times, p_x.m, p_x.c)
     if p_x.__name__ == "stable_beta_process":
         return ferguson_klass_stable_beta(arrival_times, p_x.m, p_x.c, p_x.sigma)
+
     for t in arrival_times:
 
         def fun(x):
-            return t - quad(p_x, x, upper_lim, limit=1000000)[0]
+            return t - quad(p_x, x, upper_lim, limit=1000000)[0]  # noqa: B023
 
         try:
             jumps_exact.append(
@@ -70,14 +74,14 @@ def ferguson_klass_beta(arrival_times: np.ndarray, M: float, c: float) -> np.nda
         return c * np.exp((c - 1) * np.log(1 - np.exp(x)))
 
     def myfun(x, x0):
-        integral, _ = quad(myfun_sub, -np.exp(x), 0)
+        integral = quad(myfun_sub, -np.exp(x), 0)[0]
         return integral - x0
 
     fun = lambda x: myfun(x, u[0])
     f[0] = np.exp(-np.exp(root_scalar(fun, method="brentq", bracket=[-10, 10]).root))
 
     for i in range(1, len(u)):
-        fun = lambda x: myfun(x, u[i])
+        fun = lambda x: myfun(x, u[i])  # noqa: B023
         f[i] = np.exp(
             -np.exp(
                 root_scalar(
@@ -107,18 +111,18 @@ def ferguson_klass_stable_beta(arrival_times: np.ndarray, M, c, sigma):
     u = arrival_times / M
     f = np.zeros(len(arrival_times))
 
-    def myfun_sub(x):
+    def myfun_sub(x: float) -> float:
         return const1 * np.exp(-sigma * x + (c + sigma - 1) * np.log(1 - np.exp(x)))
 
     def myfun(x, x0):
-        integral, _ = quad(myfun_sub, -np.exp(x), 0)
+        integral = quad(myfun_sub, -np.exp(x), 0)[0]
         return integral - x0
 
     fun = lambda x: myfun(x, u[0])
     f[0] = np.exp(-np.exp(root_scalar(fun, method="brentq", bracket=[-10, 10]).root))
 
     for i in range(1, len(u)):
-        fun = lambda x: myfun(x, u[i])
+        fun = lambda x: myfun(x, u[i])  # noqa: B023
         f[i] = np.exp(
             -np.exp(
                 root_scalar(
@@ -158,7 +162,7 @@ def ferguson_klass_gamma(arrival_times: np.ndarray, M):
     )
 
     for i in range(1, len(u)):
-        fun = lambda x: myfun(x, u[i])
+        fun = lambda x: myfun(x, u[i])  # noqa: B023
         f[i] = np.exp(
             root_scalar(
                 fun,
@@ -191,7 +195,7 @@ def ferguson_klass_generalized_gamma(arrival_times, M, sigma):
         return 1 / gamma(1 - sigma) * np.exp(-sigma * x - np.exp(x))
 
     def myfun(x, c):
-        integral, _ = quad(myfun_sub, x, 20)
+        integral = quad(myfun_sub, x, 20)[0]
         return integral - c
 
     fun = lambda x: myfun(x, u[0])
@@ -208,7 +212,7 @@ def ferguson_klass_generalized_gamma(arrival_times, M, sigma):
     )
 
     for i in range(1, len(u)):
-        fun = lambda x: myfun(x, u[i])
+        fun = lambda x: myfun(x, u[i])  # noqa: B023
         f[i] = np.exp(
             root_scalar(
                 fun,
