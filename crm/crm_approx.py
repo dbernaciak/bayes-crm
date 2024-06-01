@@ -62,8 +62,19 @@ class ApproxProcess:
         kappa: Optional[float] = None,  # noqa: UP007
         edges: np.ndarray = None,
         thr: float = 0.8,
-        bounds: tuple[float, float] = (1e-10, 1),
+        bounds: tuple[float, float] = (0, 1),
     ):
+        """Constructor for the ApproxProcess class.
+
+        Args:
+            p_x (Callable): Levy intensity function.
+            n_grids (int): Number of grid points.
+            g_x (Callable): g(x) function from Levy intensity decomposition.
+            kappa (Optional[float]): Exponential term of h(x) from the mixed approximation.
+            edges (np.ndarray): Grid point array.
+            thr (float): Threshold for the mixed approximation.
+            bounds (tuple[float, float]): Domain of the process. Default is (0, 1).
+        """
         self.p_x = p_x
         self.n_grids = n_grids
         self.g_x = g_x
@@ -117,7 +128,7 @@ class ApproxProcess:
         if abs(approx_integ_exp - integ) < ApproxProcess.EPSILON:
             extra_steps = int(logn(self.step, x / self.bounds[0]) - self.n_grids + 1)
             x = self.bounds[0] * self.step ** (self.n_grids + extra_steps - 1)
-            exp_bins = pdf_exp * ratio_exp ** np.arange(1, 1001)
+            exp_bins = pdf_exp * ratio_exp ** np.arange(1, self.n_grids)
             end_point = (
                 np.argwhere(
                     reverse_cumsum(exp_bins)[::-1]

@@ -1,7 +1,7 @@
 """General utility functions for the CRM package. """
 import time
 import hashlib
-from tqdm import tqdm
+from tqdm.auto import tqdm
 from .numerics import arrival_times
 
 

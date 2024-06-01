@@ -6,7 +6,7 @@ import json
 from typing import Callable, Dict, List, Optional, Tuple
 import numpy as np
 import time
-from tqdm import tqdm
+from tqdm.auto import tqdm
 import matplotlib
 import matplotlib.pyplot as plt
 from joblib import Parallel, delayed
@@ -146,7 +146,7 @@ def plot_errors_and_jump_sizes(
     Returns:
         Tuple[matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot]: A tuple containing the figure and axes objects of the plot.
     """
-    fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+    fig, ax = plt.subplots(1, 1, figsize=(4, 4))
     colors = plt.cm.tab10.colors
     labels = [
         r"$10^3$ bins mixed",
@@ -327,7 +327,7 @@ def plot_poi_er_vs_num_grids(num_edges, params, mixed_poi_er, filename=None):
     iters = [num_edges] + [i for i in params.values()]
     if "sigma" in params.keys():
         fig, axs = plt.subplots(
-            1, len(params["sigma"]), figsize=(5 * len(params["sigma"]), 5)
+            1, len(params["sigma"]), figsize=(4 * len(params["sigma"]), 4)
         )
         for i, s in enumerate(iters[-1]):
             for j, c in enumerate(params["c"]):
@@ -352,7 +352,7 @@ def plot_poi_er_vs_num_grids(num_edges, params, mixed_poi_er, filename=None):
             axs[i].set_ylabel(r"$\lambda$")
             axs[i].set_xlim(0, None)
     else:
-        fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+        fig, ax = plt.subplots(1, 1, figsize=(4, 4))
         for i, c in enumerate(params["c"]):
             color = "black"
             ls = linestyles[i]
@@ -384,7 +384,7 @@ def plot_beta_process(params, ranges, filename=None, is_stable=False):
         process = beta_process(**params)
         g_x = g_beta_process(**params)
 
-    fig, axs = plt.subplots(1, 2, figsize=(10, 5))
+    fig, axs = plt.subplots(1, 2, figsize=(8, 4))
 
     for ax, (lower, upper) in zip(axs, ranges):
         xs = np.linspace(lower, upper, 100000)
@@ -421,7 +421,7 @@ def plot_beta_process_err_rate_vs_m(sigmas, ms, cs, trapezium_poi, mixed_poi, fi
     else:
         n_grids = list(mixed_poi.keys())[0]
     if sigmas is not None:
-        fig, axs = plt.subplots(1, len(sigmas), figsize=(5 * len(sigmas), 5))
+        fig, axs = plt.subplots(1, len(sigmas), figsize=(4 * len(sigmas), 4))
         for i, sigma in enumerate(sigmas):
             for j, (c, color, ls, label) in enumerate(
                 zip(cs * 2, colors, linestyles, labels)
@@ -447,7 +447,7 @@ def plot_beta_process_err_rate_vs_m(sigmas, ms, cs, trapezium_poi, mixed_poi, fi
             axs[i].set_ylabel(r"$\lambda$")
             axs[i].set_xlim(0, None)
     else:
-        fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+        fig, ax = plt.subplots(1, 1, figsize=(4, 4))
         for i, (c, color, ls, label) in enumerate(
             zip(cs_it, colors, linestyles, labels)
         ):
@@ -478,7 +478,7 @@ def plot_beta_process_err_rate_vs_m(sigmas, ms, cs, trapezium_poi, mixed_poi, fi
 def plot_error_vs_threshold_c(
     beta_error_mixed_thr, num_edges, thresholds, cs, filename=None
 ):
-    fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+    fig, ax = plt.subplots(1, 1, figsize=(4, 4))
     colors = plt.cm.tab10.colors
     ls = ["-", "--", "-."]
     grids = np.logspace(-10, 0, num=101, endpoint=True, base=10.0)
@@ -508,7 +508,7 @@ def plot_error_vs_threshold_c(
 def plot_error_vs_threshold_stable_beta_c(
     beta_error_mixed_thr, num_edges, thresholds, cs, sigmas, idx, filename=None
 ):
-    fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+    fig, ax = plt.subplots(1, 1, figsize=(4, 4))
     colors = plt.cm.tab10.colors
     linestyles = ["-", "--", "-."]
     grids = np.logspace(-10, 0, num=101, endpoint=True, base=10.0)
@@ -542,7 +542,7 @@ def plot_error_vs_threshold_stable_beta_c(
 def plot_error_vs_threshold_m(
     beta_error_mixed_thr, num_edges, thresholds, ms, filename
 ):
-    fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+    fig, ax = plt.subplots(1, 1, figsize=(4, 4))
     grids = np.logspace(-10, 0, num=101, endpoint=True, base=10.0)
     xs = [grids[int(101 * thr)] for thr in thresholds]
     # xs = thresholds
@@ -568,7 +568,7 @@ def plot_error_vs_threshold_s(
 ):
     grids = np.logspace(-10, 0, num=101, endpoint=True, base=10.0)
     xs = [grids[int(101 * thr)] for thr in thresholds]
-    fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+    fig, ax = plt.subplots(1, 1, figsize=(4, 4))
     colors = plt.cm.tab10.colors
     ls = ["-", "--", "-."]
     for k, key in enumerate(num_edges):
