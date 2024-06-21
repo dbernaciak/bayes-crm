@@ -40,10 +40,18 @@ def envelope(
     arg = np.argmax(edges > x)
     if g_x is not None and x < cutoff:
         before = g_x(edges[arg - 1])
-        # after = g_x(edges[arg])
         return x**kappa * before
 
     before = p_x(edges[arg - 1])
+    if x < cutoff:
+        if not kappa:
+            a = p_x(edges[0])
+            b = p_x(edges[1])
+            c = p_x(edges[2])
+            k = ((b + a) / (b + c)) * (edges[0] / edges[1])
+            kappa = np.round(log10(k) / log10(edges[0] / edges[1]) - 1, 5)
+        return x**kappa * before / edges[arg - 1]**kappa
+
     after = p_x(edges[arg])
     return after + (before - after) * (edges[arg] - x) / (edges[arg] - edges[arg - 1])
 
@@ -83,10 +91,13 @@ class ApproxProcess:
         self.c_sum = None
         self.thr = thr
         if bounds[0] == 0:
-            bounds = (1e-10, bounds[1])
+            if g_x:
+                bounds = (1e-10, bounds[1])
+            else:
+                bounds = (1e-5, bounds[1])
         self.bounds = bounds
         self.logbounds = np.log10(np.array(bounds))
-        self.step = 10 ** (10 / (n_grids - 1))
+        self.step = 10 ** (log10(bounds[1] / bounds[0]) / (n_grids - 1))
 
     def _get_edges(self):
         if self.bounds[1] < np.inf:
@@ -242,10 +253,13 @@ class ApproxProcess:
                 new_csum = reverse_cumsum(p_1) + self.c_sum[-1]
             else:
                 # back-out the exponential term
-                k = (self.c_sum[-1] - self.c_sum[-2]) / (
-                    self.c_sum[-2] - self.c_sum[-3]
-                )
-                self.kappa = log10(k) / log10(self.edges[0] / self.edges[1]) - 1
+                if not self.kappa:
+                    vals = self.p_x(np.asarray([1e-10, 1e-10 * self.step, 1e-10 * self.step ** 2]))
+                    k = (vals[:-1].sum() / vals[1:].sum()) / self.step
+                    # k = (self.c_sum[-1] - self.c_sum[-2]) / (
+                    #     self.c_sum[-2] - self.c_sum[-3]
+                    # )
+                    self.kappa = log10(k) / log10(1/self.step) - 1
                 extrapolated_grid = self._get_grid_extrapolated_left(
                     bin_pdf, self.kappa, max_arrival_time
                 )
@@ -264,8 +278,10 @@ class ApproxProcess:
                     )
                     new_csum = reverse_cumsum(p_1) + self.c_sum[-1]
                 else:
-                    n = len(extrapolated_grid[:-1])
-                    new_csum = (np.ones(n) * bin_pdf).cumsum() + self.c_sum[-1]
+                    const_1 = self.p_x(extrapolated_grid[:-1]) / (
+                            extrapolated_grid[:-1] ** (self.kappa)
+                    )
+                    new_csum = reverse_cumsum(const_1 * (log(self.edges[1] / self.edges[0]))) + self.c_sum[-1]
 
             self.edges = np.concatenate((extrapolated_grid[:-1], self.edges))
             self.c_sum = np.concatenate((self.c_sum, new_csum))

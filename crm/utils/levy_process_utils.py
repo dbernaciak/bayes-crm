@@ -92,6 +92,8 @@ def process_errors_and_jump_sizes(
     kappa = -1
     if "sigma" in params.keys():
         kappa = -1 - params["sigma"]
+    if use_trap:
+        kappa = None
 
     for ng in n_grids:
         for _ in tqdm(range(num_fits)):
@@ -159,18 +161,18 @@ def plot_errors_and_jump_sizes(
         r"$10^6$ bins trapezium",
     ]
 
-    for bin, color, label in zip(bins, colors, labels):
+    for bin1, bin2, color, label in zip(jump_sizes.keys(), jump_sizes_trap.keys(), colors, labels):
         ax.scatter(
-            jump_sizes[str(bin)],
-            errors[str(bin)],
+            jump_sizes[str(bin1)],
+            errors[str(bin1)],
             s=2,
             color=color,
             marker=".",
             alpha=0.3,
         )
         ax.scatter(
-            jump_sizes_trap[str(bin)],
-            errors_trap[str(bin)],
+            jump_sizes_trap[str(bin2)],
+            errors_trap[str(bin2)],
             s=2,
             color=color,
             marker=".",
@@ -287,7 +289,7 @@ def process_error_rate_vs_params(
         p_x_func = p_x(*combination[params_idx:])
         g_x_func = g_x(*combination[params_idx:])
         r1 = calculate_integral(
-            lambda x: envelope(x, p_x_func, edges) - p_x_func(x),
+            lambda x: envelope(x, p_x_func, edges, thr=thr) - p_x_func(x),
             (1e-10, 1e-5),
             (1e-5, 1),
         )
