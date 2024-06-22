@@ -3,7 +3,7 @@ from collections.abc import Callable
 
 import numpy as np
 from joblib import Parallel, delayed
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 from ..crm_approx import ApproxProcess
 from ..strip_method import StripMethod
@@ -63,6 +63,27 @@ class OccupancyModel:
                 )
             ).prod(axis=2)
         )
+
+    def _posterior_undiscovered_partial(self, theta_grid):
+        theta_mesh, q_mesh = np.meshgrid(theta_grid, self.q_grid)
+        return np.trapz((
+            self.prior_theta(theta_mesh)
+            * self.prior_q(q_mesh)
+            * (
+                (
+                    theta_mesh.reshape(*theta_mesh.shape, 1)
+                    * (1 - q_mesh).reshape(*theta_mesh.shape, 1)
+                    ** self.num_occasions
+                )
+                + (
+                        1
+                        - theta_mesh.reshape(
+                            *theta_mesh.shape,
+                            1,
+                        )
+                )
+            ).prod(axis=2)
+        ), q_mesh, axis=0)
 
     def posterior(self, observations: np.ndarray) -> tuple[np.ndarray, Callable]:
         """Posterior calculator.
@@ -146,7 +167,7 @@ def predictive(
     y_obs = []
     counter = 0
     y = np.zeros((n_samplings, n_sites))
-    for _, (theta_i, q_i) in tqdm(enumerate(zip(theta, q, strict=False))):
+    for theta_i, q_i in tqdm(zip(theta, q, strict=False)):
         z = np.random.binomial(n=1, p=theta_i, size=n_sites)
         y = np.random.binomial(n=1, p=z * np.ones((n_samplings, n_sites)) * q_i)
         if np.any(y):
@@ -170,8 +191,11 @@ def predictive(
             counter += 1
 
     theta_posterior, q_cond_posterior = occupancy_model.posterior(np.zeros(y.shape))
-    theta_sm = ApproxProcess.from_grid(theta_posterior, occupancy_model.theta_grid)
+    theta_posterior = occupancy_model._posterior_undiscovered_partial
+    theta_sm = ApproxProcess(theta_posterior)
+    #theta_sm = ApproxProcess.from_grid(theta_posterior, occupancy_model.theta_grid)
     n_unobs = 50
+    _ = theta_sm.generate(size=n_unobs*2)
 
     def gen_unobs(theta_sm, q_cond_posterior, n_unobs, n_sites, n_extra_samplings) -> np.ndarray:
         y_unobs = np.empty((n_unobs, n_sites))
