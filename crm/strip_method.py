@@ -48,7 +48,7 @@ class StripMethod:
         else:
             self.edges = np.linspace(bounds[0], bounds[1], self.n_grids, endpoint=True)
         if p_x is not None:
-            fun_eval = p_x(edges)
+            fun_eval = p_x(self.edges)
             norm = quad(
                 lambda x: p_x(x), bounds[0] + self.epsilon, bounds[1] - self.epsilon
             )[0]
