@@ -1,9 +1,31 @@
 """Strip method for sampling of random variables."""
+
 from collections.abc import Callable
 
 import numpy as np
+import numba as nb
 from scipy.integrate import quad
 from scipy.interpolate import RegularGridInterpolator
+
+
+@nb.njit("float64[:](int64[:], float64[:])", fastmath=True)
+def _strip(number_draws_in_bin, edges) -> np.ndarray:
+    """Strip method helper.
+
+    Args:
+        number_draws_in_bin (`np.ndarray`): Number of draws in each bin.
+        edges (`np.ndarray`): Edges.
+
+    Returns:
+
+    """
+    mean_down = np.repeat(edges[:-1], number_draws_in_bin)
+    mean_up = np.repeat(edges[1:], number_draws_in_bin)
+    out = (
+        np.random.uniform(0, 1, number_draws_in_bin.sum()) * (mean_up - mean_down)
+        + mean_down
+    )
+    return out
 
 
 class StripMethod:
@@ -42,7 +64,9 @@ class StripMethod:
                     method="linear",
                 )
         elif pdf is None and p_x is None:
-            raise AssertionError("p_x and pdf cannot be None at the same time")  # noqa: TRY003
+            raise AssertionError(
+                "p_x and pdf cannot be None at the same time"
+            )  # noqa: TRY003
 
         d_x = self.edges[1:] - self.edges[:-1]
         self.mins = np.amin(np.asarray([self.pdf[1:], self.pdf[:-1]]), axis=0)
@@ -66,32 +90,10 @@ class StripMethod:
         instance = cls(pdf=pdf, edges=grid, bounds=bounds)
         return instance
 
-    @staticmethod
-    def _strip(
-        number_draws_in_bin,
-        edges,
-        rng: np.random.Generator = np.random.default_rng(seed=0),  # noqa: B008
-    ) -> np.ndarray:
-        """Strip method helper.
-
-        Args:
-            number_draws_in_bin (`np.ndarray`): Number of draws in each bin.
-            edges (`np.ndarray`): Edges.
-            rng (`np.random.Generator`): Random number generator.
-
-        Returns:
-
-        """
-        mean_down = np.repeat(edges[:-1], number_draws_in_bin)
-        mean_up = np.repeat(edges[1:], number_draws_in_bin)
-        out = (
-            rng.uniform(0, 1, number_draws_in_bin.sum()) * (mean_up - mean_down)
-            + mean_down
-        )
-        return out
-
     def generate(
-        self, size: int, rng: np.random.Generator = np.random.default_rng(seed=0)  # noqa: B008
+        self,
+        size: int,
+        rng: np.random.Generator = np.random.default_rng(seed=0),  # noqa: B008
     ) -> np.ndarray:
         """Draw random variable using the strip method.
 
@@ -102,29 +104,32 @@ class StripMethod:
         Returns: np.ndarray
 
         """
-        # bottom
 
+        const = 10
+        # bottom
+        size_orig = size
+        size = size * const
         number_draws_in_bin = rng.multinomial(size, self.probs / self.probs.sum())
-        out = self._strip(number_draws_in_bin[: self.n_grids - 1], self.edges, rng)
+        out = _strip(number_draws_in_bin[: self.n_grids - 1], self.edges)
         # top
-        mx_top = max(number_draws_in_bin[self.n_grids - 1:])
+        mx_top = max(number_draws_in_bin[self.n_grids - 1 :])
         if mx_top > 1:
-            const = 5
-            out_top = self._strip(
-                number_draws_in_bin[self.n_grids - 1:] * const, self.edges, rng
-            )
+            out_top = _strip(number_draws_in_bin[self.n_grids - 1 :], self.edges)
             idx = np.repeat(
                 np.arange(0, self.n_grids - 1),
-                number_draws_in_bin[self.n_grids - 1:] * const,
+                number_draws_in_bin[self.n_grids - 1 :],
             )
             unifs = rng.uniform(
-                0, 1, size=(number_draws_in_bin[self.n_grids - 1:]).sum() * const
+                0, 1, size=(number_draws_in_bin[self.n_grids - 1 :]).sum()
             )
             mask_top = self.mins[idx] + (
                 self.maxs[idx] - self.mins[idx]
             ) * unifs <= self.p_x(out_top)
             out_top = out_top[mask_top]
-            out_top = rng.choice(out_top, number_draws_in_bin[self.n_grids - 1:].sum())
-            out = np.hstack((out, out_top))
+            if len(out_top) > 0:
+                out_top = rng.choice(
+                    out_top, number_draws_in_bin[self.n_grids - 1 :].sum()
+                )
+                out = np.hstack((out, out_top))
 
-        return out
+        return np.random.choice(out, replace=False, size=size_orig)
