@@ -6,7 +6,6 @@ from functools import partial
 import numpy as np
 import numba as nb
 from scipy.integrate import quad
-from scipy.interpolate import RegularGridInterpolator
 
 
 @nb.njit("float64[:](int64[:], float64[:])", fastmath=True)
@@ -58,13 +57,7 @@ class StripMethod:
             self.pdf = pdf
             if p_x is None:
                 self.p_x = partial(np.interp, xp=self.edges, fp=self.pdf)
-                # self.p_x = RegularGridInterpolator(
-                #     (self.edges,),
-                #     self.pdf,
-                #     bounds_error=False,
-                #     fill_value=None,
-                #     method="linear",
-                # )
+
         elif pdf is None and p_x is None:
             raise AssertionError(
                 "p_x and pdf cannot be None at the same time"
