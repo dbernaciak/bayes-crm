@@ -1,6 +1,7 @@
-"""Strip method for sampling of random variables."""
+"""Strip method for sampling of random variables. Devroye (1986), page 360"""
 
 from collections.abc import Callable
+from functools import partial
 
 import numpy as np
 import numba as nb
@@ -47,7 +48,7 @@ class StripMethod:
             self.n_grids = len(edges)
         else:
             self.edges = np.linspace(bounds[0], bounds[1], self.n_grids, endpoint=True)
-        if p_x is not None:
+        if p_x is not None and np.abs(pdf.sum() - 1) < 1e-10:
             fun_eval = p_x(self.edges)
             norm = quad(
                 lambda x: p_x(x), bounds[0] + self.epsilon, bounds[1] - self.epsilon
@@ -56,13 +57,14 @@ class StripMethod:
         elif pdf is not None:
             self.pdf = pdf
             if p_x is None:
-                self.p_x = RegularGridInterpolator(
-                    (self.edges,),
-                    self.pdf,
-                    bounds_error=False,
-                    fill_value=None,
-                    method="linear",
-                )
+                self.p_x = partial(np.interp, xp=self.edges, fp=self.pdf)
+                # self.p_x = RegularGridInterpolator(
+                #     (self.edges,),
+                #     self.pdf,
+                #     bounds_error=False,
+                #     fill_value=None,
+                #     method="linear",
+                # )
         elif pdf is None and p_x is None:
             raise AssertionError(
                 "p_x and pdf cannot be None at the same time"
