@@ -5,7 +5,7 @@ import numba as nb
 import numpy as np
 
 
-@nb.njit("float64[:](int64, float64, float64)", fastmath=True)
+@nb.njit("float64[:](int64, float64, float64)", fastmath=True, cache=True)
 def two_envelope_beta(n, M, c):
     """Implements the two-envelope acceptance-rejection method for a Beta process.
 
@@ -51,7 +51,7 @@ def two_envelope_beta(n, M, c):
     return y
 
 
-@nb.njit("float64[:](int64, float64)", fastmath=True)
+@nb.njit("float64[:](int64, float64)", fastmath=True, cache=True)
 def two_envelope_gamma(n, M):
     """Implements the two-envelope acceptance-rejection method for a Gamma process.
 
@@ -93,7 +93,7 @@ def two_envelope_gamma(n, M):
     return y
 
 
-@nb.njit("float64[:](int64, float64, float64, float64)", fastmath=True)
+@nb.njit("float64[:](int64, float64, float64, float64)", fastmath=True, cache=True)
 def two_envelope_stable_beta(n, M, c, sigma):
     """Implements the two-envelope acceptance-rejection method for a Stable Beta process.
 
@@ -145,7 +145,7 @@ def two_envelope_stable_beta(n, M, c, sigma):
     return y
 
 
-@nb.njit("float64[:](int64, float64, float64)", fastmath=True)
+@nb.njit("float64[:](int64, float64, float64)", fastmath=True, cache=True)
 def two_envelope_gen_gamma(n, M, sigma):
     """Implements the two-envelope acceptance-rejection method for a Generalized Gamma process.
 

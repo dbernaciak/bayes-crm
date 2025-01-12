@@ -6,7 +6,7 @@ import numba as nb
 import math
 
 
-@nb.njit("f8[:](f8, f8, f8, f8)", fastmath=True)
+@nb.njit("f8[:](f8, f8, f8, f8)", fastmath=True, cache=True)
 def logspace(start, stop, num, base=10):
     delta = stop - start
     step = delta / (num - 1)
@@ -16,12 +16,12 @@ def logspace(start, stop, num, base=10):
     return np.power(base, y)
 
 
-@nb.njit("f8(f8, f8)", fastmath=True)
+@nb.njit("f8(f8, f8)", fastmath=True, cache=True)
 def logn(base, x):
     return np.log(x) / np.log(base)
 
 
-@nb.njit("f8[:](i8)", fastmath=True, parallel=True)
+@nb.njit("f8[:](i8)", fastmath=True, parallel=True, cache=True)
 def arrival_times(size):
     ret = np.empty(size, dtype=nx.float64)
     for i in nb.prange(size):
@@ -29,7 +29,7 @@ def arrival_times(size):
     return np.cumsum(ret)
 
 
-@nb.njit("f8[:](f8[:])")
+@nb.njit("f8[:](f8[:])", fastmath=True, cache=True)
 def reverse_cumsum(x):
     return np.cumsum(x[::-1])
 
@@ -53,7 +53,7 @@ def beta_pdf(x, a, b):
         return beta_pdf_2d(x, float(a), float(b))
 
 
-@nb.njit(nb.float64(nb.float64, nb.float64, nb.float64))
+@nb.njit(nb.float64(nb.float64, nb.float64, nb.float64), fastmath=True, cache=True)
 def beta_pdf_scalar(x, a, b):
 
     delta = 1e-16
@@ -75,7 +75,12 @@ def beta_pdf_scalar(x, a, b):
         return pdf
 
 
-@nb.njit(nb.float64[:](nb.float64[:], nb.float64, nb.float64))
+@nb.njit(
+    nb.float64[:](nb.float64[:], nb.float64, nb.float64),
+    fastmath=True,
+    parallel=True,
+    cache=True,
+)
 def beta_pdf_1d(x, a, b):
     n = x.shape[0]
     pdf = np.empty(n, dtype=np.float64)
@@ -102,6 +107,7 @@ def beta_pdf_1d(x, a, b):
     nb.float64[:, :](nb.float64[:, :], nb.float64, nb.float64),
     fastmath=False,
     parallel=True,
+    cache=True,
 )
 def beta_pdf_2d(x, a, b):
     m, n = x.shape
@@ -127,13 +133,13 @@ def beta_pdf_2d(x, a, b):
     return pdf
 
 
-@nb.njit(nb.float64(nb.float64, nb.float64), fastmath=True)
+@nb.njit(nb.float64(nb.float64, nb.float64), fastmath=True, cache=True)
 def binom(n, k):
     """Compute the binomial coefficient."""
     return math.exp(math.lgamma(n + 1) - math.lgamma(k + 1) - math.lgamma(n - k + 1))
 
 
-@nb.njit(nb.float64(nb.float64, nb.float64), fastmath=True)
+@nb.njit(nb.float64(nb.float64, nb.float64), fastmath=True, cache=True)
 def beta_function(a, b):
     """Compute the beta function."""
     return math.exp(math.lgamma(a) + math.lgamma(b) - math.lgamma(a + b))

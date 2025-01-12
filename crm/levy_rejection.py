@@ -44,7 +44,7 @@ def rejection_beta_brod(n, M, c):
     return y
 
 
-@nb.njit("float64[:](int64, float64)", fastmath=True)
+@nb.njit("float64[:](int64, float64)", fastmath=True, cache=True)
 def rejection_gamma_ros(n, M):
     """Implements the rejection method for a Gamma process.
 
@@ -78,7 +78,7 @@ def rejection_gamma_ros(n, M):
     return y
 
 
-@nb.njit("float64[:](int64, float64, float64)", fastmath=True)
+@nb.njit("float64[:](int64, float64, float64)", fastmath=True, cache=True)
 def rejection_gen_gamma_brod(n, M, sigma):
     """Implements the rejection method for a Generalized Gamma process.
 
@@ -116,7 +116,7 @@ def rejection_gen_gamma_brod(n, M, sigma):
     return y
 
 
-@nb.njit("float64[:](int64, float64, float64, float64)", fastmath=True)
+@nb.njit("float64[:](int64, float64, float64, float64)", fastmath=True, cache=True)
 def rejection_stable_beta_brod(n, M, c, sigma):
     """Implements the rejection method for a Generalized Beta process.
 

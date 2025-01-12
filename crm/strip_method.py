@@ -8,7 +8,7 @@ import numba as nb
 from scipy.integrate import quad
 
 
-@nb.njit("float64[:](int64[:], float64[:])", fastmath=True)
+@nb.njit("float64[:](int64[:], float64[:])", fastmath=True, cache=True)
 def _strip(number_draws_in_bin, edges) -> np.ndarray:
     """Strip method helper.
 
