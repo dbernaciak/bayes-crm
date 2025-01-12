@@ -1,4 +1,5 @@
 """This module contains the rejection method for the Levy processes."""
+
 from math import gamma
 
 import numba as nb

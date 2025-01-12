@@ -1,4 +1,5 @@
 """ This module contains the implementation of the two-envelope acceptance-rejection method. """
+
 from math import gamma
 
 import numba as nb
