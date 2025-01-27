@@ -29,7 +29,7 @@ def arrival_times(size):
     return np.cumsum(ret)
 
 
-@nb.njit("f8[:](f8[:])", fastmath=True, cache=True)
+@nb.njit("f8[:](f8[:])", cache=True, fastmath=True)
 def reverse_cumsum(x):
     return np.cumsum(x[::-1])
 
@@ -71,7 +71,7 @@ def beta_pdf_scalar(x, a, b):
             log_pdf = (
                 log_coeff + (a - 1.0) * math.log(x) + (b - 1.0) * math.log(1.0 - x)
             )
-        pdf = math.exp(log_pdf)
+        pdf = math.exp(log_pdf)  # noqa: ignore
         return pdf
 
 
@@ -143,3 +143,12 @@ def binom(n, k):
 def beta_function(a, b):
     """Compute the beta function."""
     return math.exp(math.lgamma(a) + math.lgamma(b) - math.lgamma(a + b))
+
+
+@nb.njit(nb.float64[:](nb.float64, nb.float64, nb.int64), fastmath=True, cache=True, parallel=True)
+def geospace(start, step, n):
+    res = np.empty(n + 1, dtype=np.float64)
+    for i in nb.prange(n+1):
+        res[i] = start * step ** i
+
+    return res
