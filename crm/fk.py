@@ -1,4 +1,5 @@
 """Ferguson-Klass sampling algorithm for various processes."""
+
 from collections.abc import Callable
 
 import numpy as np
@@ -8,7 +9,9 @@ from scipy.special import exp1, gamma
 
 
 # noinspection PyUnresolvedReferences
-def ferguson_klass(arrival_times: np.ndarray, p_x: Callable, upper_lim: float = 1) -> np.ndarray:
+def ferguson_klass(
+    arrival_times: np.ndarray, p_x: Callable, upper_lim: float = 1
+) -> np.ndarray:
     """
     Ferguson-Klass algorithm
 
@@ -24,7 +27,9 @@ def ferguson_klass(arrival_times: np.ndarray, p_x: Callable, upper_lim: float = 
 
     """
     jumps_exact = []
-    lim = 1
+    upper_lim = upper_lim if upper_lim != np.inf else 10000
+    lower_lim = 1e-24
+    lim = upper_lim
     if p_x.__name__ == "gamma_process":
         return ferguson_klass_gamma(arrival_times, p_x.m)
     if p_x.__name__ == "generalized_gamma_process":
@@ -37,20 +42,21 @@ def ferguson_klass(arrival_times: np.ndarray, p_x: Callable, upper_lim: float = 
     for t in arrival_times:
 
         def fun(x):
-            return t - quad(p_x, x, upper_lim, limit=1000000)[0]  # noqa: B023
+            return t - quad(p_x, x, lim, limit=1000000)[0]  # noqa: B023
 
         try:
             jumps_exact.append(
                 root_scalar(
                     fun,
-                    bracket=[lim / 100, lim],
+                    bracket=[lower_lim, upper_lim],
                     method="brentq",
-                    x0=lim,
+                    x0=upper_lim,
                     x1=1e-24,
                     xtol=1e-24,
                 ).root
             )
-            lim = jumps_exact[-1]
+            upper_lim = jumps_exact[-1]
+            lower_lim = jumps_exact[-1] / 1e6
         except ValueError:
             jumps_exact.append(0)
     return np.array(jumps_exact)
