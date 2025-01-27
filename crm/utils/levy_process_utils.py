@@ -77,18 +77,32 @@ def process_errors_and_jump_sizes(
                 f"./data/cache/{inspect.currentframe().f_code.co_name}_{hash_hex}_1.json",
                 "r",
             ) as f:
-                errors = json.load(f)
+                errors_dec = json.load(f)
             with open(
                 f"./data/cache/{inspect.currentframe().f_code.co_name}_{hash_hex}_2.json",
                 "r",
             ) as f:
                 jump_sizes = json.load(f)
-            return errors, jump_sizes
+
+            with open(
+                f"./data/cache/{inspect.currentframe().f_code.co_name}_{hash_hex}_3.json",
+                "r",
+            ) as f:
+                errors_nodec = json.load(f)
+
+            with open(
+                f"./data/cache/{inspect.currentframe().f_code.co_name}_{hash_hex}_4.json",
+                "r",
+            ) as f:
+                errors_approx = json.load(f)
+            return errors_dec, errors_nodec, errors_approx, jump_sizes
         except FileNotFoundError:
             pass
 
     jump_sizes = {str(ng): [] for ng in n_grids}
-    errors = {str(ng): [] for ng in n_grids}
+    errors_dec = {str(ng): [] for ng in n_grids}
+    errors_nodec = {str(ng): [] for ng in n_grids}
+    errors_approx = {str(ng): [] for ng in n_grids}
     kappa = -1
     if "sigma" in params.keys():
         kappa = -1 - params["sigma"]
@@ -98,7 +112,9 @@ def process_errors_and_jump_sizes(
     for ng in n_grids:
         for _ in tqdm(range(num_fits)):
             times_of_arrival = np.random.exponential(size=n_jumps).cumsum()
-            fk = ferguson_klass(times_of_arrival, process(**params))
+            fk = ferguson_klass(
+                times_of_arrival, process(**params), upper_lim=bounds[1]
+            )
             idx = np.argwhere(fk != 0)
             bp = ApproxProcess(
                 process(**params),
@@ -108,8 +124,23 @@ def process_errors_and_jump_sizes(
                 bounds=bounds,
                 thr=thr,
             )
+            bp_nodec = ApproxProcess(
+                process(**params),
+                ng,  # int(((ng - 1) - 1) / 2 + 1),
+                None,
+                None,
+                bounds=bounds,
+                thr=thr,
+            )
             num = bp.generate(times_of_arrival)
-            errors[str(ng)].extend((abs(num[idx] - fk[idx]) / fk[idx]).ravel())
+            num_nodec = bp_nodec.generate(times_of_arrival)
+            errors_dec[str(ng)].extend((abs(num[idx] - fk[idx]) / fk[idx]).ravel())
+            errors_nodec[str(ng)].extend(
+                (abs(num_nodec[idx] - fk[idx]) / fk[idx]).ravel()
+            )
+            errors_approx[str(ng)].extend(
+                (abs(num[idx] - num_nodec[idx]) / fk[idx]).ravel()
+            )
             jump_sizes[str(ng)].extend(fk[idx].ravel())
 
     if cache:
@@ -117,23 +148,33 @@ def process_errors_and_jump_sizes(
             f"./data/cache/{inspect.currentframe().f_code.co_name}_{hash_hex}_1.json",
             "w",
         ) as f:
-            json.dump(errors, f)
+            json.dump(errors_dec, f)
         with open(
             f"./data/cache/{inspect.currentframe().f_code.co_name}_{hash_hex}_2.json",
             "w",
         ) as f:
             json.dump(jump_sizes, f)
+        with open(
+            f"./data/cache/{inspect.currentframe().f_code.co_name}_{hash_hex}_3.json",
+            "w",
+        ) as f:
+            json.dump(errors_nodec, f)
+        with open(
+            f"./data/cache/{inspect.currentframe().f_code.co_name}_{hash_hex}_2.json",
+            "w",
+        ) as f:
+            json.dump(errors_approx, f)
 
-    return errors, jump_sizes
+    return errors_dec, errors_nodec, errors_approx, jump_sizes
 
 
 def plot_errors_and_jump_sizes(
     jump_sizes: Dict[str, List[float]],
     errors: Dict[str, List[float]],
     bins: List[int],
-    jump_sizes_trap: Dict[str, List[float]],
-    errors_trap: Dict[str, List[float]],
     filename: Optional[str] = None,
+    x_upper: Optional[float] = 1,
+    y_upper: Optional[float] = 1e-2,
 ) -> Tuple[matplotlib.figure.Figure, matplotlib.pyplot.Axes]:
     """Plot errors and jump sizes.
 
@@ -141,41 +182,28 @@ def plot_errors_and_jump_sizes(
         jump_sizes (dict): A dictionary containing the jump sizes for each grid size.
         errors (dict): A dictionary containing the errors for each grid size.
         bins (list): A list of bins for the histogram.
-        jump_sizes_trap (dict): A dictionary containing the jump sizes for each grid size using the trapezoidal method.
-        errors_trap (dict): A dictionary containing the errors for each grid size using the trapezoidal method.
         filename (str, optional): The name of the file to save the plot. If None, the plot is not saved.
+        x_upper (float, optional): The upper limit of the x-axis. Default is 1.
 
     Returns:
         Tuple[matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot]: A tuple containing the figure and axes objects of the plot.
     """
     fig, ax = plt.subplots(1, 1, figsize=(4, 4))
-    colors = plt.cm.tab10.colors
+    colors = ["black", "dimgrey", "darkgrey", "lightgrey", "gainsboro"]
     labels = [
-        r"$10^3$ bins mixed",
-        r"$10^3$ bins trapezium",
-        r"$10^4$ bins mixed",
-        r"$10^4$ bins trapezium",
-        r"$10^5$ bins mixed",
-        r"$10^5$ bins trapezium",
-        r"$10^6$ bins mixed",
-        r"$10^6$ bins trapezium",
+        r"$10^3$ bins",
+        r"$10^4$ bins",
+        r"$10^5$ bins",
+        r"$10^6$ bins",
     ]
 
-    for bin1, bin2, color, label in zip(jump_sizes.keys(), jump_sizes_trap.keys(), colors, labels):
+    for i, (bin1, label) in enumerate(zip(jump_sizes.keys(), labels)):
         ax.scatter(
             jump_sizes[str(bin1)],
             errors[str(bin1)],
-            s=2,
-            color=color,
-            marker=".",
-            alpha=0.3,
-        )
-        ax.scatter(
-            jump_sizes_trap[str(bin2)],
-            errors_trap[str(bin2)],
-            s=2,
-            color=color,
-            marker=".",
+            s=5,
+            color=colors[i],
+            marker="o",
             alpha=1,
         )
 
@@ -183,9 +211,10 @@ def plot_errors_and_jump_sizes(
     ax.set_xlabel("Jump size")
     ax.set_yscale("log")
     ax.set_xscale("log")
-    ax.set_xlim(1e-24, 1)
+    ax.set_xlim(1e-24, x_upper)
+    ax.set_ylim(1e-12, y_upper)
     lgnd = ax.legend(labels, loc=1)
-    for handle in lgnd.legendHandles:
+    for handle in lgnd.legend_handles:
         handle._sizes = [90]
 
     if filename:
@@ -246,6 +275,7 @@ def process_error_rate_vs_params(
     g_x: Callable,
     thresholds: List = [0.5],
     use_cache: bool = True,
+    bounds=(1e-10, 1),
 ):
     if use_cache:
         hash_hex = hash_args(num_edges, params, p_x.__name__, g_x.__name__, thresholds)
@@ -290,14 +320,14 @@ def process_error_rate_vs_params(
         g_x_func = g_x(*combination[params_idx:])
         r1 = calculate_integral(
             lambda x: envelope(x, p_x_func, edges, thr=thr) - p_x_func(x),
-            (1e-10, 1e-5),
-            (1e-5, 1),
+            (bounds[0], 1e-5),
+            (1e-5, bounds[1]),
         )
         r2 = calculate_integral(
             lambda x: envelope(x, p_x_func, edges, g_x_func, kappa, thr=thr)
             - p_x_func(x),
-            (1e-10, 1e-5),
-            (1e-5, 1),
+            (bounds[0], 1e-5),
+            (1e-5, bounds[1]),
         )
         return r1, r2
 
@@ -325,7 +355,7 @@ def process_error_rate_vs_params(
 
 def plot_poi_er_vs_num_grids(num_edges, params, mixed_poi_er, filename=None):
     linestyles = ["-", "--", "-."]
-    labels = [f"c={p} mixed" for p in params["c"]]
+    labels = [f"c={p}" for p in params["c"]]
     iters = [num_edges] + [i for i in params.values()]
     if "sigma" in params.keys():
         fig, axs = plt.subplots(
@@ -387,14 +417,13 @@ def plot_beta_process(params, ranges, filename=None, is_stable=False):
         g_x = g_beta_process(**params)
 
     fig, axs = plt.subplots(1, 2, figsize=(8, 4))
-
     for ax, (lower, upper) in zip(axs, ranges):
         xs = np.linspace(lower, upper, 100000)
-        ax.plot(xs, process(xs), color="blue", lw=1)
+        ax.plot(xs, process(xs), color="black", lw=1)
         ax.plot(
             xs,
             xs ** (-1 - sigma) * g_x(lower),
-            color="red",
+            color="black",
             lw=1,
             ls="--",
         )
@@ -402,7 +431,8 @@ def plot_beta_process(params, ranges, filename=None, is_stable=False):
             xs,
             process(xs[0])
             + (process(xs[-1]) - process(xs[0])) / 100000 * np.arange(0, 100000),
-            color="green",
+            color="black",
+            ls="-.",
         )
         ax.legend(["exact", r"$x^{-1} g(x_{min})$", "trapezium"])
         # ax.set_ylim(0, None)
@@ -412,10 +442,10 @@ def plot_beta_process(params, ranges, filename=None, is_stable=False):
 
 
 def plot_beta_process_err_rate_vs_m(sigmas, ms, cs, trapezium_poi, mixed_poi, filename):
-    colors = ["black", "black", "black", "tab:blue", "tab:blue", "tab:blue"]
+    colors = ["darkgrey", "darkgrey", "darkgrey", "black", "black", "black"]
     linestyles = ["-", "--", "-.", "-", "--", "-."]
-    labels_trap = [f"c={c} trapezium" for c in cs] if trapezium_poi else []
-    labels_mixed = [f"c={c} mixed" for c in cs] if mixed_poi else []
+    labels_trap = [f"c={c} not decomposed" for c in cs] if trapezium_poi else []
+    labels_mixed = [f"c={c} decomposed" for c in cs] if mixed_poi else []
     labels = labels_trap + labels_mixed
     cs_it = cs * 2 if (trapezium_poi is not None and mixed_poi is not None) else cs
     if trapezium_poi:
@@ -428,7 +458,7 @@ def plot_beta_process_err_rate_vs_m(sigmas, ms, cs, trapezium_poi, mixed_poi, fi
             for j, (c, color, ls, label) in enumerate(
                 zip(cs * 2, colors, linestyles, labels)
             ):
-                if "trapezium" in label:
+                if "not decomposed" in label:
                     axs[i].plot(
                         ms,
                         [trapezium_poi[str(n_grids)][str(m)][str(c)][i] for m in ms],
@@ -453,7 +483,7 @@ def plot_beta_process_err_rate_vs_m(sigmas, ms, cs, trapezium_poi, mixed_poi, fi
         for i, (c, color, ls, label) in enumerate(
             zip(cs_it, colors, linestyles, labels)
         ):
-            if "trapezium" in label:
+            if "not decomposed" in label:
                 ax.plot(
                     ms,
                     [trapezium_poi[str(n_grids)][str(m)][i % len(cs)] for m in ms],
@@ -481,7 +511,7 @@ def plot_error_vs_threshold_c(
     beta_error_mixed_thr, num_edges, thresholds, cs, filename=None
 ):
     fig, ax = plt.subplots(1, 1, figsize=(4, 4))
-    colors = plt.cm.tab10.colors
+    colors = ["black", "dimgrey", "darkgrey", "lightgrey", "gainsboro"]
     ls = ["-", "--", "-."]
     grids = np.logspace(-10, 0, num=101, endpoint=True, base=10.0)
     xs = [grids[int(101 * thr)] for thr in thresholds]
@@ -511,7 +541,7 @@ def plot_error_vs_threshold_stable_beta_c(
     beta_error_mixed_thr, num_edges, thresholds, cs, sigmas, idx, filename=None
 ):
     fig, ax = plt.subplots(1, 1, figsize=(4, 4))
-    colors = plt.cm.tab10.colors
+    colors = ["black", "dimgrey", "darkgrey", "lightgrey", "gainsboro"]
     linestyles = ["-", "--", "-."]
     grids = np.logspace(-10, 0, num=101, endpoint=True, base=10.0)
     xs = [grids[int(101 * thr)] for thr in thresholds]
@@ -571,7 +601,7 @@ def plot_error_vs_threshold_s(
     grids = np.logspace(-10, 0, num=101, endpoint=True, base=10.0)
     xs = [grids[int(101 * thr)] for thr in thresholds]
     fig, ax = plt.subplots(1, 1, figsize=(4, 4))
-    colors = plt.cm.tab10.colors
+    colors = ["black", "dimgrey", "darkgrey", "lightgrey", "gainsboro"]
     ls = ["-", "--", "-."]
     for k, key in enumerate(num_edges):
         for i in range(3):
