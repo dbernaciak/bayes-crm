@@ -145,10 +145,16 @@ def beta_function(a, b):
     return math.exp(math.lgamma(a) + math.lgamma(b) - math.lgamma(a + b))
 
 
-@nb.njit(nb.float64[:](nb.float64, nb.float64, nb.int64), fastmath=True, cache=True, parallel=True)
+@nb.njit(
+    nb.float64[:](nb.float64, nb.float64, nb.int64),
+    fastmath=True,
+    cache=True,
+    parallel=True,
+)
 def geospace(start, step, n):
     res = np.empty(n + 1, dtype=np.float64)
-    for i in nb.prange(n+1):
-        res[i] = start * step ** i
-
+    current_value = start
+    for i in nb.prange(n + 1):
+        res[i] = current_value
+        current_value *= step
     return res
