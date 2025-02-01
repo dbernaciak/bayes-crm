@@ -6,7 +6,7 @@ import json
 from typing import Callable, Dict, List, Optional, Tuple
 import numpy as np
 import time
-from tqdm.auto import tqdm
+from tqdm import tqdm
 import matplotlib
 import matplotlib.pyplot as plt
 from joblib import Parallel, delayed
@@ -27,6 +27,7 @@ def measure_time_approx_process(num_fits, *args, size=100, **kwargs):
     start_time = time.time()
     for _ in tqdm(range(num_fits)):
         p = ApproxProcess(*args, **kwargs)
+        p.PROCESS_MIN = 1e-100
         times_of_arrival = arrival_times(size)
         _ = p.generate(times_of_arrival)
     return (time.time() - start_time) / num_fits
