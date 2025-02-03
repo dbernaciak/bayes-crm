@@ -7,7 +7,6 @@ import numpy as np
 from math import log, log10, ceil
 from scipy.integrate import quad
 from crm.utils.numerics import logspace, logn, reverse_cumsum, geospace
-from line_profiler_pycharm import profile
 
 
 def _stable_integral(fun_eval_1, grid, kappa, idx):
