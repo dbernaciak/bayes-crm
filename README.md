@@ -11,9 +11,5 @@ We propose a general-purpose approximation to the Ferguson-Klass algorithm for g
 
 **speed_comparison** - executes speed benchmarking vs state of the art methods in the literature 
 
-
-## Binder
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/dbernaciak/bayes-crm/main?urlpath=lab)
-
 ## NBViewer
 [![nbviewer](https://raw.githubusercontent.com/jupyter/design/master/logos/Badges/nbviewer_badge.svg)](https://nbviewer.org/github/dbernaciak/bayes-crm/tree/main/notebooks/)
