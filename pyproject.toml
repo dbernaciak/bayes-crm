@@ -45,7 +45,7 @@ docs = [
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["crm"]   # <--- matches 'crm' and any subpackages
+include = ["crm", "crm.*"]   # <--- matches 'crm' and any subpackages
 exclude = [
     "tests*",
     "notebooks*",
