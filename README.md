@@ -9,7 +9,20 @@ We propose a general-purpose approximation to the Ferguson-Klass algorithm for g
 ## Notebook examples
 **analysis** - shows examples presented in the paper as well as the general methodology
 
+Kaggle notebook [link](https://www.kaggle.com/code/dawidbernaciak/notebook70185d5f00)
+
 **speed_comparison** - executes speed benchmarking vs state of the art methods in the literature 
+
+Kaggle notebook [link](https://www.kaggle.com/code/dawidbernaciak/notebook169fa6903e)
 
 ## NBViewer
 [![nbviewer](https://raw.githubusercontent.com/jupyter/design/master/logos/Badges/nbviewer_badge.svg)](https://nbviewer.org/github/dbernaciak/bayes-crm/tree/main/notebooks/)
+
+## Kaggle
+In order to run the notebooks on Kaggle, you need to:
+* sign in to Kaggle
+* follow the notebook links above
+* click "Edit" button
+* on the right hand side panel, click enable internet access
+* run the notebook
+```
