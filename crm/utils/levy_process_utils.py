@@ -39,11 +39,11 @@ def process_errors_and_jump_sizes(
     params: dict,
     n_grids: list[int],
     g_process: Callable,
-    bounds=(1e-10, 1),
+    bounds=(0, 1),
     use_trap: bool = False,
     thr: float = 0.5,
     n_jumps=100,
-    cache: bool = True,
+    cache: bool = False,
 ) -> Tuple[dict, dict]:
     """Measure errors and jump sizes for a given process.
 

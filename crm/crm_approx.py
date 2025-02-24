@@ -7,6 +7,7 @@ import numpy as np
 from math import log, log10, ceil
 from scipy.integrate import quad
 from crm.utils.numerics import logspace, logn, reverse_cumsum, geospace
+import numba as nb
 
 
 def _stable_integral(fun_eval_1, grid, kappa, idx):
@@ -18,6 +19,61 @@ def _stable_integral(fun_eval_1, grid, kappa, idx):
             fun_eval_1[:-1] * 1 / (kappa + 1) * (grid_exp[1 : idx + 1] - grid_exp[:idx])
         )
     return p_1
+
+
+@nb.njit(
+    "float64[:](float64[:], float64[:], float64[:], float64[:], float64[:], float64, float64)",
+    fastmath=True,
+    parallel=True,
+    cache=True,
+)
+def _find_jump_sizes(f_x, g_x, c_sum, edges, arrival_times, kappa, thr):
+    indexes = np.searchsorted(c_sum, arrival_times, side="left").astype(np.int64)
+    jumps_sizes = np.empty_like(arrival_times)
+
+    n_f = len(f_x)
+    n_g = len(g_x)
+
+    for i in nb.prange(len(indexes)):
+        idx = indexes[i]
+
+        if idx == 0:
+            jumps_sizes[i] = edges[0]  # Handle edge case if index is 0
+            continue
+
+        edge_idx = edges[idx]
+        edge_next = edges[idx + 1]
+
+        if edge_idx < thr:
+            idx_g = idx - n_g
+            delta_c = c_sum[idx] - arrival_times[i]
+
+            if kappa == -1:
+                jumps_sizes[i] = edge_next * np.exp(delta_c / g_x[idx_g - 1])
+            else:
+                jumps_sizes[i] = edge_next * (
+                    (
+                        (delta_c * (kappa + 1))
+                        / (g_x[idx_g - 1] * edge_idx ** (kappa + 1))
+                    )
+                    + 1
+                ) ** (1 / (kappa + 1))
+        else:
+            delta_area = arrival_times[i] - c_sum[idx - 1]
+            dx = edge_idx - edge_next
+
+            if dx == 0:
+                jumps_sizes[i] = edge_idx  # Avoid division by zero
+                continue
+
+            fxx = (f_x[idx + 1] - f_x[idx]) / dx
+            f_x_idx = f_x[idx]
+
+            jumps_sizes[i] = (
+                edge_idx - ((f_x_idx**2 + 2 * fxx * delta_area) ** 0.5 - f_x_idx) / fxx
+            )
+
+    return jumps_sizes
 
 
 def envelope(
@@ -87,6 +143,7 @@ class ApproxProcess:
         bounds: tuple[float, float] = (0, 1),
         step: Optional[float] = None,
         do_rejection: bool = False,
+        optimized: bool = False,
     ):
         """Constructor for the ApproxProcess class.
 
@@ -99,7 +156,8 @@ class ApproxProcess:
             thr (float): Threshold for the mixed approximation.
             bounds (tuple[float, float]): Domain of the process. Default is (0, 1).
             step (Optional[float]): Step size for the grid. Default is None.
-            do_rejection (bool): Whether to use rejection sampling. Default is False.
+            do_rejection (bool): Whether to use thinning. Default is False.
+            optimized (bool): Whether to use optimized for speed version of the code. Default is False.
         """
         self.p_x = p_x
         self.n_grids = n_grids
@@ -110,8 +168,8 @@ class ApproxProcess:
         self.thr = thr
         self.do_rejection = do_rejection
         if bounds[0] == 0:
-            self.x_thr = 10 ** (-10 * (1 - 0.8))
             bounds = (ApproxProcess.X_LOWER, bounds[1])
+        self.x_thr = 10 ** (-10 * (1 - thr))
         self.bounds = bounds
         self.logbounds = np.log10(np.array(bounds))
         if not step:
@@ -120,6 +178,7 @@ class ApproxProcess:
             self.step = step
         self.g_x_vals = None
         self.f_x_vals = None
+        self.optimized = optimized
 
     def _get_edges(self):
         if self.bounds[1] < np.inf:
@@ -147,9 +206,11 @@ class ApproxProcess:
         integ = quad(self.p_x, x, self.bounds[1])[0]  # noqa: ignore
         approx_integ_exp = pdf_exp / (1 - ratio_exp) - pdf_exp
         approx_integ_poly = const * x ** (-p) / p
-        if abs(approx_integ_poly - integ) < ApproxProcess.EPSILON and abs(
-            approx_integ_poly - integ
-        ) < abs(approx_integ_exp - integ):
+        if (
+            abs(approx_integ_poly - integ) < ApproxProcess.EPSILON
+            and abs(approx_integ_poly - integ) < abs(approx_integ_exp - integ)
+            and integ > ApproxProcess.CDF_EPSILON
+        ):
             extra_steps = int(logn(self.step, x / self.bounds[0]) - self.n_grids + 1)
             extra_steps += ceil(
                 logn(
@@ -167,7 +228,10 @@ class ApproxProcess:
             )
             return True
 
-        if abs(approx_integ_exp - integ) < ApproxProcess.EPSILON:
+        if (
+            abs(approx_integ_exp - integ) < ApproxProcess.EPSILON
+            and integ > ApproxProcess.CDF_EPSILON
+        ):
             extra_steps = int(logn(self.step, x / self.bounds[0]) - self.n_grids + 1)
             x = self.bounds[0] * self.step ** (self.n_grids + extra_steps - 1)
             end_point = (
@@ -194,13 +258,19 @@ class ApproxProcess:
                 )
             )
             return True
+        if integ < ApproxProcess.CDF_EPSILON:
+            extra_steps = np.ceil(
+                logn(self.step, x / self.bounds[0]) - self.n_grids + 1
+            )
+            self.edges = geospace(
+                self.edges[0], 1 / self.step, self.n_grids + extra_steps
+            )[::-1]
+            return True
 
         return False
 
     def _extrapolate_tails(self):
-        for x in np.logspace(
-            0, 2, 5
-        ):  # logspace(np.float32(0), np.float32(2.0), np.int8(5), 10):
+        for x in np.logspace(0, 3, 7):
             if self._check_tail(x):
                 return
 
@@ -222,9 +292,8 @@ class ApproxProcess:
             p_1 = _stable_integral(fun_eval_1, self.edges, self.kappa, idx)
 
             self.c_sum = reverse_cumsum(np.concatenate((p_1, p_2)))
-            if self.do_rejection:
-                self.g_x_vals = fun_eval_1
-                self.f_x_vals = fun_eval_2
+            self.g_x_vals = fun_eval_1
+            self.f_x_vals = fun_eval_2
         elif self.find_kappa():
             idx = int(self.n_grids * self.thr)
             fun_eval = self.p_x(self.edges)
@@ -236,16 +305,14 @@ class ApproxProcess:
             )
             p_1 = _stable_integral(const_1, self.edges, self.kappa, idx)
             self.c_sum = reverse_cumsum(np.concatenate((p_1, p_2)))
-            if self.do_rejection:
-                self.g_x_vals = const_1
-                self.f_x_vals = fun_eval[idx:]
+            self.g_x_vals = const_1
+            self.f_x_vals = fun_eval[idx:]
         else:
             fun_eval = self.p_x(self.edges)
             self.c_sum = reverse_cumsum(
                 (self.edges[1:] - self.edges[:-1]) * (fun_eval[1:] + fun_eval[:-1]) / 2
             )
-            if self.do_rejection:
-                self.f_x_vals = fun_eval
+            self.f_x_vals = fun_eval
 
     def _get_grid_extrapolated_left(self, bin_pdf, kappa, max_arrival_time):
         if round(kappa, 5) == -1:
@@ -309,8 +376,7 @@ class ApproxProcess:
                         len(extrapolated_grid) - 1,
                     )
                     new_csum = reverse_cumsum(p_1) + self.c_sum[-1]
-                    if self.do_rejection:
-                        self.g_x_vals = np.concatenate((fun_eval_1[:-1], self.g_x_vals))
+                    self.g_x_vals = np.concatenate((fun_eval_1[:-1], self.g_x_vals))
             elif self.find_kappa():
                 extrapolated_grid = self._get_grid_extrapolated_left(
                     bin_pdf, self.kappa, max_arrival_time
@@ -326,8 +392,7 @@ class ApproxProcess:
                         len(extrapolated_grid) - 1,
                     )
                     new_csum = reverse_cumsum(p_1) + self.c_sum[-1]
-                    if self.do_rejection:
-                        self.g_x_vals = np.concatenate((const_1[:-1], self.g_x_vals))
+                    self.g_x_vals = np.concatenate((const_1[:-1], self.g_x_vals))
             else:
                 # This is the case where the kappa is not found, and we have to use trapezoidal rule
                 n = int(np.ceil((max_arrival_time - self.c_sum[-1]) / bin_pdf))
@@ -344,8 +409,7 @@ class ApproxProcess:
                         * (extrapolated_grid[1:] - extrapolated_grid[:-1])
                     )
                     new_csum = reverse_cumsum(quadrature) + self.c_sum[-1]
-                    if self.do_rejection:
-                        self.f_x_vals = np.concatenate((vals[:-1], self.f_x_vals))
+                    self.f_x_vals = np.concatenate((vals[:-1], self.f_x_vals))
 
             self.edges = np.concatenate((extrapolated_grid[:-1], self.edges))
             self.c_sum = np.concatenate((self.c_sum, new_csum))
@@ -420,7 +484,19 @@ class ApproxProcess:
             self._get_csum()
 
         self._extend_csum(arrival_times.max())
-        jump_sizes = np.interp(arrival_times, self.c_sum, self.edges[:-1][::-1])
+        if self.optimized:
+            jump_sizes = np.interp(arrival_times, self.c_sum, self.edges[:-1][::-1])
+        else:
+            jump_sizes = _find_jump_sizes(
+                self.f_x_vals[::-1],
+                self.g_x_vals[::-1],
+                self.c_sum,
+                self.edges[::-1],
+                arrival_times,
+                self.kappa,
+                self.x_thr,
+            )
+
         if not self.do_rejection:
             return jump_sizes
         else:
