@@ -361,60 +361,64 @@ class ApproxProcess:
         return False
 
     def _extend_csum(self, max_arrival_time):
-        if self.c_sum[-1] < max_arrival_time:
-            bin_pdf = self.c_sum[-1] - self.c_sum[-2]
-            if self.kappa and self.g_x:
-                extrapolated_grid = self._get_grid_extrapolated_left(
-                    bin_pdf, self.kappa, max_arrival_time
-                )
-                if len(extrapolated_grid) > 0:
-                    fun_eval_1 = self.g_x(extrapolated_grid)
-                    p_1 = _stable_integral(
-                        fun_eval_1,
-                        extrapolated_grid,
-                        self.kappa,
-                        len(extrapolated_grid) - 1,
+        while self.c_sum[-1] < max_arrival_time:
+            new_csum = None
+            if self.c_sum[-1] < max_arrival_time:
+                bin_pdf = self.c_sum[-1] - self.c_sum[-2]
+                if self.kappa and self.g_x:
+                    extrapolated_grid = self._get_grid_extrapolated_left(
+                        bin_pdf, self.kappa, max_arrival_time
                     )
-                    new_csum = reverse_cumsum(p_1) + self.c_sum[-1]
-                    self.g_x_vals = np.concatenate((fun_eval_1[:-1], self.g_x_vals))
-            elif self.find_kappa():
-                extrapolated_grid = self._get_grid_extrapolated_left(
-                    bin_pdf, self.kappa, max_arrival_time
-                )
-                if len(extrapolated_grid) > 0:
-                    const_1 = self.p_x(extrapolated_grid) / (
-                        extrapolated_grid**self.kappa
+                    if len(extrapolated_grid) > 0:
+                        fun_eval_1 = self.g_x(extrapolated_grid)
+                        p_1 = _stable_integral(
+                            fun_eval_1,
+                            extrapolated_grid,
+                            self.kappa,
+                            len(extrapolated_grid) - 1,
+                        )
+                        new_csum = reverse_cumsum(p_1) + self.c_sum[-1]
+                        self.g_x_vals = np.concatenate((fun_eval_1[:-1], self.g_x_vals))
+                elif self.find_kappa():
+                    extrapolated_grid = self._get_grid_extrapolated_left(
+                        bin_pdf, self.kappa, max_arrival_time
                     )
-                    p_1 = _stable_integral(
-                        const_1,
-                        extrapolated_grid,
-                        self.kappa,
-                        len(extrapolated_grid) - 1,
-                    )
-                    new_csum = reverse_cumsum(p_1) + self.c_sum[-1]
-                    self.g_x_vals = np.concatenate((const_1[:-1], self.g_x_vals))
-            else:
-                # This is the case where the kappa is not found, and we have to use trapezoidal rule
-                n = int(np.ceil((max_arrival_time - self.c_sum[-1]) / bin_pdf))
-                min_new_grid = self.edges[0] * (1 / self.step) ** n
-                if min_new_grid < self.PROCESS_MIN:
-                    extrapolated_grid = np.empty(0)
+                    if len(extrapolated_grid) > 0:
+                        const_1 = self.p_x(extrapolated_grid) / (
+                            extrapolated_grid**self.kappa
+                        )
+                        p_1 = _stable_integral(
+                            const_1,
+                            extrapolated_grid,
+                            self.kappa,
+                            len(extrapolated_grid) - 1,
+                        )
+                        new_csum = reverse_cumsum(p_1) + self.c_sum[-1]
+                        self.g_x_vals = np.concatenate((const_1[:-1], self.g_x_vals))
                 else:
-                    extrapolated_grid = geospace(self.edges[0], 1 / self.step, n)[::-1]
-                if len(extrapolated_grid) > 0:
-                    vals = self.p_x(extrapolated_grid)
-                    quadrature = (
-                        (vals[:-1] + vals[1:])
-                        / 2
-                        * (extrapolated_grid[1:] - extrapolated_grid[:-1])
-                    )
-                    new_csum = reverse_cumsum(quadrature) + self.c_sum[-1]
-                    self.f_x_vals = np.concatenate((vals[:-1], self.f_x_vals))
+                    # This is the case where the kappa is not found, and we have to use trapezoidal rule
+                    n = int(np.ceil((max_arrival_time - self.c_sum[-1]) / bin_pdf))
+                    min_new_grid = self.edges[0] * (1 / self.step) ** n
+                    if min_new_grid < self.PROCESS_MIN:
+                        extrapolated_grid = np.empty(0)
+                    else:
+                        extrapolated_grid = geospace(self.edges[0], 1 / self.step, n)[
+                            ::-1
+                        ]
+                    if len(extrapolated_grid) > 0:
+                        vals = self.p_x(extrapolated_grid)
+                        quadrature = (
+                            (vals[:-1] + vals[1:])
+                            / 2
+                            * (extrapolated_grid[1:] - extrapolated_grid[:-1])
+                        )
+                        new_csum = reverse_cumsum(quadrature) + self.c_sum[-1]
+                        self.f_x_vals = np.concatenate((vals[:-1], self.f_x_vals))
 
-            self.edges = np.concatenate((extrapolated_grid[:-1], self.edges))
-            self.c_sum = np.concatenate((self.c_sum, new_csum))
-            self.bounds = (self.edges[0], self.edges[-1])
-            self.logbounds = np.log(np.array(self.bounds))
+                self.edges = np.concatenate((extrapolated_grid[:-1], self.edges))
+                self.c_sum = np.concatenate((self.c_sum, new_csum))
+                self.bounds = (self.edges[0], self.edges[-1])
+                self.logbounds = np.log(np.array(self.bounds))
 
     @classmethod
     def from_grid(cls, intensity: np.ndarray, grid: np.ndarray):
