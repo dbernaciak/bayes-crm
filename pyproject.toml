@@ -1,6 +1,6 @@
 [project]
 name = "bayes-crm"
-version = "0.0.1"
+version = "0.0.2"
 description = "Bayesian nonparametric fast sampling from completely random measures."
 readme = "README.md"
 requires-python = ">=3.9,<4.0"
