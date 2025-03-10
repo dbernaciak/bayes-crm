@@ -214,7 +214,8 @@ class ApproxProcess:
             extra_steps = int(logn(self.step, x / self.bounds[0]) - self.n_grids + 1)
             extra_steps += ceil(
                 logn(
-                    self.step, ((ApproxProcess.CDF_EPSILON * p) / const) ** (-1 / p) / x
+                    self.step,
+                    ((ApproxProcess.CDF_EPSILON * p) / const) ** (1 / (1 - p)) / x,
                 )
             )
             log_x = log10(
@@ -239,8 +240,6 @@ class ApproxProcess:
                     logn(
                         ratio_exp, ApproxProcess.CDF_EPSILON * (1 - ratio_exp) / pdf_exp
                     )
-                    * delta
-                    + x
                 )
                 * delta
                 + x
