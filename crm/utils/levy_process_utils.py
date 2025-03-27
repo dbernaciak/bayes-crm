@@ -209,7 +209,7 @@ def plot_errors_and_jump_sizes(
         )
 
     ax.set_ylabel("Relative error")
-    ax.set_xlabel("Jump size")
+    ax.set_xlabel(r"$J_k$")
     ax.set_yscale("log")
     ax.set_xscale("log")
     ax.set_xlim(1e-24, x_upper)
@@ -229,7 +229,7 @@ def calculate_integral(
     bound_1: Tuple[float, float],
     bound_2: Tuple[float, float],
     limit: int = 10000000,
-    epsrel: float = 1.49e-03,
+    epsrel: float = 1.49e-08,
 ):
     """Calculate the integral of a function over two separate intervals.
 
@@ -517,7 +517,7 @@ def plot_error_vs_threshold_c(
     grids = np.logspace(-10, 0, num=101, endpoint=True, base=10.0)
     xs = [grids[int(101 * thr)] for thr in thresholds]
     for k, key in enumerate(num_edges):
-        for i in range(3):
+        for i in range(len(cs)):
             ys = np.array(
                 [beta_error_mixed_thr[str(key)][str(x)][str(1)][i] for x in thresholds]
             )
