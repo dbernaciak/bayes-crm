@@ -229,7 +229,7 @@ def calculate_integral(
     bound_1: Tuple[float, float],
     bound_2: Tuple[float, float],
     limit: int = 10000000,
-    epsrel: float = 1.49e-08,
+    epsrel: float = 1.49e-03,
 ):
     """Calculate the integral of a function over two separate intervals.
 
@@ -531,7 +531,7 @@ def plot_error_vs_threshold_c(
             )
             ax.set_yscale("log")
             ax.legend(loc="upper left")
-    ax.set_xlabel("Threshold")
+    ax.set_xlabel(r"$x_{\text{thr}}$")
     ax.set_ylabel(r"$\lambda$")
     if filename:
         fig.savefig(filename, bbox_inches="tight")
