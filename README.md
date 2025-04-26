@@ -18,6 +18,9 @@ Kaggle notebook [link](https://www.kaggle.com/code/dawidbernaciak/notebook169fa6
 ## NBViewer
 [![nbviewer](https://raw.githubusercontent.com/jupyter/design/master/logos/Badges/nbviewer_badge.svg)](https://nbviewer.org/github/dbernaciak/bayes-crm/tree/main/notebooks/)
 
+## Cloning the repository
+This project uses [uv](https://docs.astral.sh/uv/getting-started/) as the dependency manager. To get started type ```uv sync``` to create a virtual environment with all dependencies installed.
+
 ## Kaggle
 In order to run the notebooks on Kaggle, you need to:
 * sign in to Kaggle
@@ -25,4 +28,6 @@ In order to run the notebooks on Kaggle, you need to:
 * click "Edit" button
 * on the right hand side panel, click enable internet access
 * run the notebook
-```
+
+## Runtime notes
+Some of the analysis pieces and speed benchmarks are very time consuming to run and their outputs are dependent on the used hardware.
