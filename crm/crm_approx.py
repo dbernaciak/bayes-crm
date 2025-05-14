@@ -137,7 +137,7 @@ class ApproxProcess:
         p_x: Callable,
         n_grids: int = 1001,
         g_x: Callable = None,  # noqa: RUF013
-        kappa: float | None = None,
+        kappa: Optional[float] = None,
         edges: np.ndarray = None,
         thr: float = 0.8,
         bounds: tuple[float, float] = (0, 1),
