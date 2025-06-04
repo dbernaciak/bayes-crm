@@ -378,6 +378,8 @@ class ApproxProcess:
                         )
                         new_csum = reverse_cumsum(p_1) + self.c_sum[-1]
                         self.g_x_vals = np.concatenate((fun_eval_1[:-1], self.g_x_vals))
+                    else:
+                        break
                 elif self.find_kappa():
                     extrapolated_grid = self._get_grid_extrapolated_left(
                         bin_pdf, self.kappa, max_arrival_time
@@ -394,6 +396,8 @@ class ApproxProcess:
                         )
                         new_csum = reverse_cumsum(p_1) + self.c_sum[-1]
                         self.g_x_vals = np.concatenate((const_1[:-1], self.g_x_vals))
+                    else:
+                        break
                 else:
                     # This is the case where the kappa is not found, and we have to use trapezoidal rule
                     n = int(np.ceil((max_arrival_time - self.c_sum[-1]) / bin_pdf))
@@ -413,6 +417,8 @@ class ApproxProcess:
                         )
                         new_csum = reverse_cumsum(quadrature) + self.c_sum[-1]
                         self.f_x_vals = np.concatenate((vals[:-1], self.f_x_vals))
+                    else:
+                        break
 
                 self.edges = np.concatenate((extrapolated_grid[:-1], self.edges))
                 self.c_sum = np.concatenate((self.c_sum, new_csum))
